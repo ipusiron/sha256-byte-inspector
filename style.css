@@ -619,6 +619,9 @@ main {
   display: grid;
   grid-template-columns: repeat(16, var(--bit-cell));
   gap: var(--bit-gap);
+  /* Each band is a layout and paint boundary: changing or moving one row does not make
+   * the browser lay out the cells of the other rows again. */
+  contain: layout paint style;
 }
 
 .bit {
@@ -811,6 +814,7 @@ main {
   align-items: center;
   gap: 2px 8px;
   min-width: 0;
+  contain: layout style;
   padding: 2px 0;
   border: 1px solid transparent;
 }
@@ -917,6 +921,7 @@ main {
   grid-template-columns: repeat(auto-fill, minmax(10ch, 1fr));
   gap: 2px 8px;
   width: 100%;
+  contain: layout style;
   padding: 4px;
   border: 1px solid transparent;
   border-block-end-color: var(--line);

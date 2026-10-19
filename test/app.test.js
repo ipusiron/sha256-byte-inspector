@@ -147,13 +147,15 @@ test('The computation section is built once per block, result, language and radi
   assert.match(app, /if \(m\.blocks < 2 \|\| m\.blockNumber === null \|\| m\.phase === 'pad'\) return '';/, 'the block number shows for two blocks or more only');
 });
 
-test('Autoplay: a setTimeout chain at 1000ms / speed, stopping at the last step, quiet for the live region, labelled Pause while playing', () => {
+test('Autoplay: a setTimeout chain at 1000ms / speed that leaves the browser idle time, stopping at the last step, quiet for the live region, labelled Pause while playing', () => {
   assert.match(app, /const PLAY_INTERVAL = 1000;/);
-  assert.match(app, /playTimer = window\.setTimeout\(tickPlay, PLAY_INTERVAL \/ speedFactor\(\)\);/);
+  assert.match(app, /const PLAY_IDLE_FACTOR = 3;/);
+  assert.match(app, /const delay = Math\.max\(PLAY_INTERVAL \/ speedFactor\(\), \(cost \|\| 0\) \* PLAY_IDLE_FACTOR\);/, 'a slow step stretches the interval');
+  assert.match(app, /window\.requestAnimationFrame\(\(\) => \{\s*if \(!playing\) return;\s*window\.clearTimeout\(playTimer\);\s*playTimer = window\.setTimeout\(tickPlay, delay\);\s*\}\);/, 'the delay starts after the step is painted');
   assert.doesNotMatch(app, /setInterval/);
-  assert.deepEqual([...app.matchAll(/requestAnimationFrame/g)].length, 1, 'rAF is used for the layout measurement only');
-  assert.match(app, /const last = totalSteps\(\) - 1;\s*const k = stepIndex\(\);\s*if \(k >= last\) \{\s*stopPlay\(\);\s*return;\s*\}\s*goToStep\(k \+ 1, false, true\);/, 'one step per tick, no announcement, scrolled into view');
-  assert.match(app, /if \(stepIndex\(\) >= last\) \{\s*stopPlay\(\);\s*return;\s*\}\s*armPlay\(\);/, 'the chain stops at the end');
+  assert.deepEqual([...app.matchAll(/requestAnimationFrame/g)].length, 2, 'rAF is used for the layout measurement and the autoplay pacing only');
+  assert.match(app, /const last = totalSteps\(\) - 1;\s*const k = stepIndex\(\);\s*if \(k >= last\) \{\s*stopPlay\(\);\s*return;\s*\}\s*const started = performance\.now\(\);\s*goToStep\(k \+ 1, false, true\);\s*const cost = performance\.now\(\) - started;/, 'one step per tick, no announcement, scrolled into view, timed');
+  assert.match(app, /if \(stepIndex\(\) >= last\) \{\s*stopPlay\(\);\s*return;\s*\}\s*armPlay\(cost\);/, 'the chain stops at the end');
   assert.match(app, /button\.dataset\.i18nLabel = playing \? 'clock\.pause' : 'clock\.play';/);
   assert.match(app, /button\.setAttribute\('aria-pressed', String\(playing\)\);/);
   assert.match(app, /button\.textContent = playing \? PAUSE_GLYPH : PLAY_GLYPH;/);
@@ -166,9 +168,12 @@ test('Autoplay: a setTimeout chain at 1000ms / speed, stopping at the last step,
   assert.match(app, /case ' ':\s*case 'Spacebar':\s*if \(tag === 'BUTTON' \|\| tag === 'A' \|\| tag === 'SUMMARY'\) handled = false;\s*else togglePlay\(\);/);
 });
 
-test('Following the clock: scrollIntoView nearest for manual steps and autoplay only, paused for a second after the user scrolls', () => {
+test('Following the clock: one layout read and one scroll for manual steps and autoplay only, paused for a second after the user scrolls', () => {
   assert.match(app, /const FOLLOW_PAUSE = 1000;/);
-  assert.match(app, /if \(performance\.now\(\) - userScrollAt < FOLLOW_PAUSE\) return;\s*ownScrollUntil = performance\.now\(\) \+ OWN_SCROLL_WINDOW;\s*anchor\.scrollIntoView\(\{ block: 'nearest' \}\);/);
+  assert.match(app, /if \(performance\.now\(\) - userScrollAt < FOLLOW_PAUSE\) return;/);
+  assert.match(app, /const a = anchor\.getBoundingClientRect\(\);\s*let delta = 0;\s*if \(a\.top < 0\) delta = a\.top;\s*else if \(a\.bottom > limit\) delta = Math\.min\(a\.bottom - limit, a\.top\);/, 'nearest: up to the top edge, or down until the row clears the clock');
+  assert.match(app, /if \(delta !== 0\) \{\s*ownScrollUntil = performance\.now\(\) \+ OWN_SCROLL_WINDOW;\s*window\.scrollBy\(0, delta\);/);
+  assert.doesNotMatch(app, /anchor\.scrollIntoView\(/, 'scrollIntoView forced several layouts per step');
   assert.match(app, /window\.addEventListener\('wheel', noteUserScroll, \{ passive: true \}\);\s*window\.addEventListener\('touchmove', noteUserScroll, \{ passive: true \}\);/);
   assert.match(app, /window\.addEventListener\('scroll', \(\) => \{\s*if \(performance\.now\(\) > ownScrollUntil\) noteUserScroll\(\);\s*\}, \{ passive: true \}\);/);
   assert.match(app, /const limit = window\.innerHeight - clockHeight\(\);/, 'the fixed clock does not hide the row');

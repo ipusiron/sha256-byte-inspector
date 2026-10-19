@@ -113,6 +113,12 @@
    * until the keys have been still for COMPUTE_DELAY ms (see updateCompute). */
   let deferCompute = false;
   let computeTimer = 0;
+  /* Layout facts measured once per resize instead of on every step. */
+  let railOverflows = true;
+  let clockHeightCache = 0;
+  /* Autoplay keeps at least this share of the time free for the browser (pointer,
+   * scrolling, painting): the next step waits until a step's cost times this factor. */
+  const PLAY_IDLE_FACTOR = 3;
 
   /* ---- wording and small helpers ---- */
 
@@ -643,8 +649,10 @@
    * smallest amount: scrollIntoView would also scroll the page vertically whenever the
    * rail is above or below the fold, for example while stepping with the clock. */
   function revealRailButton(button) {
+    /* Whether the rail overflows is measured on resize (updateClockHeight), so a wide
+     * screen does not read the layout on every step. */
+    if (!railOverflows) return;
     const rail = $('stage-rail');
-    if (rail.scrollWidth <= rail.clientWidth) return;
     const outer = rail.getBoundingClientRect();
     const inner = button.getBoundingClientRect();
     if (inner.left < outer.left) rail.scrollLeft -= outer.left - inner.left + 4;
@@ -717,9 +725,16 @@
   }
 
   /* One timer at a time; a speed change re-arms it with the new interval. */
-  function armPlay() {
+  function armPlay(cost) {
     window.clearTimeout(playTimer);
-    playTimer = window.setTimeout(tickPlay, PLAY_INTERVAL / speedFactor());
+    const delay = Math.max(PLAY_INTERVAL / speedFactor(), (cost || 0) * PLAY_IDLE_FACTOR);
+    /* Wait for the frame of this step to be painted before counting the delay, so a
+     * fast speed on a slow machine never queues steps back to back. */
+    window.requestAnimationFrame(() => {
+      if (!playing) return;
+      window.clearTimeout(playTimer);
+      playTimer = window.setTimeout(tickPlay, delay);
+    });
   }
 
   /* Advances one step per tick, silently for the live region, scrolling the current
@@ -736,12 +751,14 @@
       stopPlay();
       return;
     }
+    const started = performance.now();
     goToStep(k + 1, false, true);
+    const cost = performance.now() - started;
     if (stepIndex() >= last) {
       stopPlay();
       return;
     }
-    armPlay();
+    armPlay(cost);
   }
 
   function startPlay() {
@@ -774,7 +791,7 @@
   }
 
   function clockHeight() {
-    return $('clock').offsetHeight;
+    return clockHeightCache || $('clock').offsetHeight;
   }
 
   /* Scrolls so that `anchor` (the current row) is visible above the fixed clock, then,
@@ -783,18 +800,19 @@
    * wheel, touch or scrollbar scroll. */
   function scrollToShow(anchor, tail) {
     if (performance.now() - userScrollAt < FOLLOW_PAUSE) return;
-    ownScrollUntil = performance.now() + OWN_SCROLL_WINDOW;
-    anchor.scrollIntoView({ block: 'nearest' });
+    /* One layout read and one scroll: scrollIntoView did the same but cost several
+     * forced layouts per step on this long page. */
     const limit = window.innerHeight - clockHeight();
     const a = anchor.getBoundingClientRect();
     let delta = 0;
-    if (a.bottom > limit) delta = a.bottom - limit;
+    if (a.top < 0) delta = a.top;
+    else if (a.bottom > limit) delta = Math.min(a.bottom - limit, a.top);
     if (tail) {
       const b = tail.getBoundingClientRect();
       const need = b.bottom - limit - delta;
       if (need > 0) delta += Math.min(need, Math.max(0, a.top - delta));
     }
-    if (delta > 0) {
+    if (delta !== 0) {
       ownScrollUntil = performance.now() + OWN_SCROLL_WINDOW;
       window.scrollBy(0, delta);
     }
@@ -1712,9 +1730,12 @@
    * clock. style.css holds a fallback value. The clock is measured only while it is
    * visible (below 768px it hides while a text area has focus). */
   function updateClockHeight() {
+    const rail = $('stage-rail');
+    railOverflows = rail.scrollWidth > rail.clientWidth;
     const height = $('clock').offsetHeight;
     if (height === 0) return;
     document.documentElement.style.setProperty('--clock-height', (height + CLOCK_MARGIN) + 'px');
+    clockHeightCache = height;
   }
 
   /* Resize events and position changes come in bursts; one measurement per animation
