@@ -1,0 +1,2 @@
+# Test-vector originals are stored byte for byte; their SHA-256 values are recorded in test/vectors/NOTICE.md.
+test/vectors/** -text
