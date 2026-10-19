@@ -1,0 +1,19 @@
+[
+  {"name": "access-seed", "input": "# kind=fictional-access\n# started=09:00\n# format=hctt/1", "expected": "7b4b04ae3858c66ab00e0efa3bdf8fc9cbc91ac1940d75e64d9ed1d03cd83499"},
+  {
+    "name": "access-row1",
+    "input": "7b4b04ae3858c66ab00e0efa3bdf8fc9cbc91ac1940d75e64d9ed1d03cd83499|09:02,Room-A,C-1001,IN",
+    "expected": "e70fd1bc4f12808d4f56a4552c422f44e951348cabdd400921abd6416feef2b5"
+  },
+  {
+    "name": "access-row2-time-changed",
+    "input": "e70fd1bc4f12808d4f56a4552c422f44e951348cabdd400921abd6416feef2b5|09:06,Room-B,C-1002,IN",
+    "expected": "7b16d4edc54afd8880a799b32178b270f418f791936d3a5193b935e623dd7ceb"
+  },
+  {"name": "access-trailer", "input": "b3e0940880aa9b1d2f27f44aa85babba21394337850357edb77ab7529e98ec75|rows=8", "expected": "7d2ae70c923436f75a23d0bb6f1359da98c83ae378309fd1d814579c96e78a45"},
+  {
+    "name": "access-row1-fixed-seed",
+    "input": "0000000000000000000000000000000000000000000000000000000000000000|09:02,Room-A,C-1001,IN",
+    "expected": "32eaeb06ba369d792eb9e853da964893c5027ab757eb3125e396ae5fde94524e"
+  }
+]

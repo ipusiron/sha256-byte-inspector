@@ -1,0 +1,13 @@
+{
+  "name": "sha256-byte-inspector",
+  "version": "1.0.0",
+  "private": true,
+  "description": "See every byte that goes into SHA-256 and follow the computation round by round",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}

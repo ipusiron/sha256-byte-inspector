@@ -1,0 +1,128 @@
+[
+  {
+    "id": "access",
+    "headers": [
+      "# kind=fictional-access",
+      "# started=09:00",
+      "# format=hctt/1"
+    ],
+    "rows": [
+      [
+        "09:02",
+        "Room-A",
+        "C-1001",
+        "IN"
+      ],
+      [
+        "09:05",
+        "Room-B",
+        "C-1002",
+        "IN"
+      ],
+      [
+        "09:12",
+        "Room-A",
+        "C-1001",
+        "OUT"
+      ],
+      [
+        "09:20",
+        "Room-C",
+        "C-1003",
+        "IN"
+      ],
+      [
+        "09:25",
+        "Room-B",
+        "C-1002",
+        "OUT"
+      ],
+      [
+        "09:30",
+        "Room-A",
+        "C-1004",
+        "IN"
+      ],
+      [
+        "09:42",
+        "Room-C",
+        "C-1003",
+        "OUT"
+      ],
+      [
+        "09:50",
+        "Room-A",
+        "C-1004",
+        "OUT"
+      ]
+    ],
+    "seed": "7b4b04ae3858c66ab00e0efa3bdf8fc9cbc91ac1940d75e64d9ed1d03cd83499",
+    "hashes": [
+      "e70fd1bc4f12808d4f56a4552c422f44e951348cabdd400921abd6416feef2b5",
+      "a47252712f3e90571807a24680b6c2a97fb1e37c4472d490b60d6f8f816d36c8",
+      "4d7641680cc7593c5af4a57368dfb52855af7e7bbc6741de1eac510f7cb907d1",
+      "8f778e3903ef2fd1461ae115e44cb39c130165f10a4953aaf75a087891d4a6c2",
+      "4ce3c4f29dc6e1f0d0da0aa2af5c0eb4b438d3c355bb1da6268815d22fb45476",
+      "8df3a4d6ab1f8d80cee6e184ab22a4c9cd967726f3e98505497ea0f76865bd03",
+      "3f26b321403421c98e5603b08bb491864bcc684079910041223631c1daaf74d3",
+      "b3e0940880aa9b1d2f27f44aa85babba21394337850357edb77ab7529e98ec75"
+    ],
+    "trailer": "7d2ae70c923436f75a23d0bb6f1359da98c83ae378309fd1d814579c96e78a45"
+  },
+  {
+    "id": "temperature",
+    "headers": [
+      "# kind=fictional-temperature",
+      "# started=10:00",
+      "# format=hctt/1"
+    ],
+    "rows": [
+      [
+        "10:00",
+        "T-A",
+        "20.1",
+        "C"
+      ],
+      [
+        "10:05",
+        "T-A",
+        "20.3",
+        "C"
+      ],
+      [
+        "10:10",
+        "T-A",
+        "20.2",
+        "C"
+      ],
+      [
+        "10:15",
+        "T-A",
+        "20.5",
+        "C"
+      ],
+      [
+        "10:20",
+        "T-A",
+        "20.4",
+        "C"
+      ],
+      [
+        "10:25",
+        "T-A",
+        "20.6",
+        "C"
+      ]
+    ],
+    "seed": "61b23cce1fad77eb816e22f7c43a262573b3f7d5633fb634d511ed82ba36a6ee",
+    "hashes": [
+      "859afd72da484ac90aca557cc370be4ba8a365fdb17827d1df7f639baf1d4d0a",
+      "fa49618618c516b993867359b1b50066ba132ffd839451149644e3918e2633af",
+      "09104ed2faff18ef0d106cb009713009ecb8c27844cc990df4360807499b28ee",
+      "23ed92420bd5632114a4fbd18ec545fc84e77072605c8b81fac4654afd56e097",
+      "f9f2174ac834eb6bd21934578d6a7aa7e3ad8947be339d8d5e9d08ce6bebfa3a",
+      "ae2011993d282eaff0c09ae2e84763804d91ff6c0b31ecd24602ba646c737357"
+    ],
+    "trailer": "01e44e48d57bead49fc471f63cbc415b8f5e61784ac59775bc082cfcab9e7d60"
+  }
+]

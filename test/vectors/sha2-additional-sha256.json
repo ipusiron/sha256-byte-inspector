@@ -1,0 +1,15 @@
+[
+  {"n": 1, "description": "1 byte 0xbd", "input": {"hex": "bd"}, "digest": "68325720aabd7c82f30f554b313d0570c95accbb7dc4b5aae11204c08ffe732b"},
+  {"n": 2, "description": "4 bytes 0xc98c8e55", "input": {"hex": "c98c8e55"}, "digest": "7abc22c0ae5af26ce93dbb94433a0e0b2e119d014f8e7f65bd56c61ccccd9504"},
+  {"n": 3, "description": "55 bytes of zeros", "input": {"fill": "00", "count": 55}, "digest": "02779466cdec163811d078815c633f21901413081449002f24aa3e80f0b88ef7"},
+  {"n": 4, "description": "56 bytes of zeros", "input": {"fill": "00", "count": 56}, "digest": "d4817aa5497628e7c77e6b606107042bbba3130888c5f47a375e6179be789fbb"},
+  {"n": 5, "description": "57 bytes of zeros", "input": {"fill": "00", "count": 57}, "digest": "65a16cb7861335d5ace3c60718b5052e44660726da4cd13bb745381b235a1785"},
+  {"n": 6, "description": "64 bytes of zeros", "input": {"fill": "00", "count": 64}, "digest": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b"},
+  {"n": 7, "description": "1000 bytes of zeros", "input": {"fill": "00", "count": 1000}, "digest": "541b3e9daa09b20bf85fa273e5cbd3e80185aa4ec298e765db87742b70138a53"},
+  {"n": 8, "description": "1000 bytes of 0x41 `A'", "input": {"fill": "41", "count": 1000}, "digest": "c2e686823489ced2017f6059b8b239318b6364f6dcd835d0a519105a1eadd6e4"},
+  {"n": 9, "description": "1005 bytes of 0x55 `U'", "input": {"fill": "55", "count": 1005}, "digest": "f4d62ddec0f3dd90ea1380fa16a5ff8dc4c54b21740650f24afc4120903552b0"},
+  {"n": 10, "description": "1000000 bytes of zeros", "input": {"fill": "00", "count": 1000000}, "digest": "d29751f2649b32ff572b5e0a9f541ea660a50f94ff0beedfb0b692b924cc8025"},
+  {"n": 11, "description": "0x20000000 (536870912) bytes of 0x5a `Z'", "input": {"fill": "5a", "count": 536870912}, "digest": "15a1868c12cc53951e182344277447cd0979536badcc512ad24c67e9b2d4f3dd"},
+  {"n": 12, "description": "0x41000000 (1090519040) bytes of zeros", "input": {"fill": "00", "count": 1090519040}, "digest": "461c19a93bd4344f9215f5ec64357090342bc66b15a148317d276e31cbc20b53"},
+  {"n": 13, "description": "0x6000003e (1610612798) bytes of 0x42 `B'", "input": {"fill": "42", "count": 1610612798}, "digest": "c23ce8a7895f4b21ec0daf37920ac0a262a220045a03eb2dfed48ef9b05aabea"}
+]
