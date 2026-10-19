@@ -1,9 +1,10 @@
 /* Tests for index.html and the page-level rules of CLAUDE.md: the six deferred
  * scripts, the exact CSP, the ids of the screen contract, the single page with
  * its five numbered sections in document order (no entrances, panels or dock),
- * the six boards, the fixed clock at the end of main, the link allowlist, the
- * dictionary keys used by data-i18n and the DOM/storage/network rules that
- * app.js must follow. */
+ * the computation section laid out at once as five panels (a) to (e), the fixed
+ * clock with its heading at the end of main, the three round header buttons and
+ * the help dialog, the link allowlist, the dictionary keys used by data-i18n and
+ * the DOM/storage/network rules that app.js must follow. */
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,8 +19,16 @@ const messages = require('../messages.js');
 const SCRIPTS = ['sha256-core.js', 'input-core.js', 'presets.js', 'trace-view.js', 'messages.js', 'app.js'];
 const CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; connect-src 'none'";
 const REPOSITORY = 'https://github.com/ipusiron/sha256-byte-inspector';
-const BOARDS = ['pad', 'split', 'schedule', 'round', 'final', 'digest'];
-const PHASES = ['input', 'pad', 'split', 'schedule', 'round', 'final', 'digest'];
+/* The five panels of the computation section, (a) to (e), with their heading keys. */
+const PANELS = [
+  { name: 'block', key: 'compute.block.title' },
+  { name: 'schedule', key: 'compute.schedule.title' },
+  { name: 'round', key: 'compute.round.title' },
+  { name: 'final', key: 'board.final.title' },
+  { name: 'digest', key: 'board.digest.title' }
+];
+/* The phases of the stage rail (the step model's phases; "input" is not a phase). */
+const PHASES = ['pad', 'split', 'schedule', 'round', 'final', 'digest'];
 const STORAGE_KEYS = ['sha256-byte-inspector.lang', 'sha256-byte-inspector.display'];
 /* The five sections of the page, in reading order, with their heading id and key. */
 const SECTIONS = [
@@ -31,17 +40,18 @@ const SECTIONS = [
 ];
 /* Every id named in the "screen contract" section of CLAUDE.md. */
 const CONTRACT_IDS = [
-  'lang-toggle', 'theme-toggle',
+  'lang-toggle', 'theme-toggle', 'help-button',
   'announcement', 'error',
   'input-card', 'input-title', 'input-mode', 'input-mode-text', 'input-mode-hex', 'text-field', 'text-input', 'hex-field', 'hex-input', 'input-error', 'preset-select',
   'input-options', 'input-options-title', 'newline-select', 'trailing-newline', 'bom-check', 'text-notes',
   'bytes', 'bytes-title', 'bytes-title-text', 'input-stats', 'byte-grid', 'byte-legend',
   'compute', 'compute-title', 'stage-rail', 'position-block', 'position-index',
-  'stage', 'stage-title', 'board-pad', 'board-split', 'board-schedule', 'board-round', 'board-final', 'board-digest', 'dropped-stats',
+  'stage', 'stage-title', 'board-block', 'board-schedule', 'board-round', 'board-final', 'board-digest', 'dropped-stats',
   'result', 'result-title', 'match-badge', 'digest-groups', 'radix-select',
-  'copy-hash', 'copy-bytes-spaced', 'copy-bytes-joined', 'copy-sha256sum', 'copy-worksheet',
+  'copy-title', 'copy-hash', 'copy-bytes-spaced', 'copy-bytes-joined', 'copy-sha256sum', 'copy-worksheet',
   'compare-input', 'compare-result',
-  'clock', 'clock-first', 'clock-prev', 'clock-play', 'clock-next', 'clock-last', 'clock-range', 'granularity', 'clock-speed'
+  'clock', 'clock-title', 'clock-position', 'clock-first', 'clock-prev', 'clock-play', 'clock-next', 'clock-last', 'clock-range', 'granularity', 'clock-speed',
+  'help-dialog', 'help-title', 'help-close', 'help-body'
 ];
 /* Attributes every static inline SVG icon carries, and the ones it must not. */
 const SVG_ATTRIBUTES = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', focusable: 'false' };
@@ -72,6 +82,8 @@ function inOrder(ids) {
 }
 
 const main = /<main>([\s\S]*?)<\/main>/.exec(html);
+const header = /<header class="page-header">([\s\S]*?)<\/header>/.exec(html);
+const dialog = /<dialog\b([^>]*)>([\s\S]*?)<\/dialog>/.exec(html);
 
 test('Six local classic scripts are deferred in dependency order', () => {
   const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)];
@@ -117,19 +129,21 @@ test('IDs are unique and every id of the screen contract exists', () => {
   for (const id of ids) assert.match(id, /^[a-z][a-z0-9-]*$/, id);
 });
 
-test('One page: no entrances, tabs, panels, dock, settings panel or motion toggle', () => {
+test('One page: no entrances, tabs, panels, dock, settings panel or motion toggle; the help dialog is the only dialog', () => {
   assert.doesNotMatch(html, /class="entries"|role="tab|aria-controls|aria-selected|tabindex="-1"/);
   assert.doesNotMatch(html, /id="tab-|id="panel-|id="dock"|<aside\b|motion-toggle|free-columns|free-main|free-heading|<h2[^>]*data-i18n="tab\./);
   assert.doesNotMatch(html, /data-i18n(?:-label)?="(?:tab|guide|learn|settings|dock)\./);
-  assert.doesNotMatch(html, /<dialog|aria-modal/);
-  assert.equal((html.match(/<h2\b/g) || []).length, SECTIONS.length, 'the five section headings are the only h2 elements');
+  assert.equal((html.match(/<dialog\b/g) || []).length, 1, 'the help is the only dialog');
+  assert.doesNotMatch(html, /aria-modal/, 'showModal() makes the dialog modal');
+  assert.equal((html.match(/<h2\b/g) || []).length, SECTIONS.length + 1, 'the five section headings and the help heading are the only h2 elements');
+  assert.equal((main[1].match(/<h2\b/g) || []).length, SECTIONS.length, 'five h2 elements inside main');
   assert.equal((html.match(/<main>/g) || []).length, 1);
 });
 
 test('Main starts with the live regions, stacks the five numbered sections in reading order and ends with the clock', () => {
   assert.ok(main);
   assert.match(main[1], /^\s*<p id="announcement" class="sr-only" role="status" aria-live="polite"><\/p>\s*<p id="error" role="alert" class="warning"><\/p>\s*<section id="input-card"/);
-  assert.match(main[1], /<\/section>\s*<div id="clock" class="clock" role="group" data-i18n-label="clock\.title">[\s\S]*<\/div>\s*$/, 'the clock is the last child of main');
+  assert.match(main[1], /<\/section>\s*<div id="clock" class="clock" role="group" aria-labelledby="clock-title">[\s\S]*<\/div>\s*$/, 'the clock is the last child of main');
   const sections = [...main[1].matchAll(/\n    <section id="([\w-]+)" class="(card[^"]*)" aria-labelledby="([\w-]+)">/g)];
   assert.deepEqual(sections.map(match => match[1]), SECTIONS.map(section => section.id), 'five top-level sections in order');
   assert.deepEqual(sections.map(match => match[3]), SECTIONS.map(section => section.title));
@@ -143,8 +157,10 @@ test('Main starts with the live regions, stacks the five numbered sections in re
   assert.match(html, /<span id="bytes-title-text" data-i18n="section\.bytes"><\/span>/, 'app.js swaps the key of the bytes heading in hex mode');
   assert.ok(Object.hasOwn(messages.ja, 'section.bytesHex') && Object.hasOwn(messages.en, 'section.bytesHex'));
   inOrder(['input-title', 'input-mode', 'text-input', 'hex-input', 'input-error', 'preset-select', 'input-options-title', 'newline-select', 'trailing-newline', 'bom-check', 'text-notes',
-    'bytes-title', 'input-stats', 'byte-grid', 'byte-legend', 'compute-title', 'stage-rail', 'position-block', 'position-index', 'stage', 'dropped-stats',
-    'result-title', 'match-badge', 'digest-groups', 'radix-select', 'copy-hash', 'copy-bytes-spaced', 'copy-bytes-joined', 'copy-sha256sum', 'copy-worksheet', 'compare-input', 'compare-result', 'clock']);
+    'bytes-title', 'input-stats', 'byte-grid', 'byte-legend', 'compute-title', 'stage-rail', 'position-block', 'position-index', 'stage',
+    'board-block', 'board-schedule', 'board-round', 'board-final', 'board-digest', 'dropped-stats',
+    'result-title', 'match-badge', 'digest-groups', 'radix-select', 'copy-title', 'copy-hash', 'copy-bytes-spaced', 'copy-bytes-joined', 'copy-sha256sum', 'copy-worksheet', 'compare-input', 'compare-result',
+    'clock', 'clock-title', 'clock-position', 'clock-range', 'clock-speed', 'clock-first', 'granularity', 'help-dialog', 'help-title', 'help-close', 'help-body']);
 });
 
 test('Section 1 (input): mode radios, the two text areas, the hex help, the error line and the preset list', () => {
@@ -178,7 +194,7 @@ test('Section 1 (input): mode radios, the two text areas, the hex help, the erro
   assert.doesNotMatch(section, /newline-select|trailing-newline|bom-check|input\.limit|input\.encoding/, 'the settings live in section 2');
 });
 
-test('Section 2 (input settings): newline, trailing newline, BOM, the limit and the text notes', () => {
+test('Section 2 (input settings): newline, trailing newline, BOM, the limit and the text notes; no data-off until app.js sets it', () => {
   const section = sliceBetween('input-options', 'bytes');
   assert.equal(tag('newline-select').name, 'select');
   const newline = /<select id="newline-select">([\s\S]*?)<\/select>/.exec(section)[1];
@@ -191,35 +207,39 @@ test('Section 2 (input settings): newline, trailing newline, BOM, the limit and 
   assert.match(section, /<p class="muted" data-i18n="input\.limit"><\/p>/);
   assert.match(section, /<div id="text-notes" class="notes">\s*<p class="muted" data-i18n="input\.encoding"><\/p>\s*<p class="muted" data-i18n="input\.text\.help"><\/p>\s*<\/div>/);
   assert.equal((section.match(/<(?:input|select|textarea|button)\b/g) || []).length, 3, 'three controls');
+  assert.doesNotMatch(tag('input-options').attrs, /data-off/, 'text mode opens first');
+  assert.match(css, /#input-options\[data-off\] label\s*\{\s*color:\s*var\(--muted\);/, 'disabled settings fade their labels');
 });
 
-test('Section 3 (bytes): statistics, grid and legend', () => {
+test('Section 3 (bytes): statistics, grid and a hidden legend whose first item is the caption', () => {
   const section = sliceBetween('bytes', 'compute');
-  assert.match(section, /<div id="input-stats" class="stats" data-i18n-label="stats\.title"><\/div>\s*<div id="byte-grid" class="byte-grid"><\/div>\s*<ul id="byte-legend" class="byte-legend" data-i18n-label="byte\.legend"><\/ul>/);
+  assert.match(section, /<div id="input-stats" class="stats" data-i18n-label="stats\.title"><\/div>\s*<div id="byte-grid" class="byte-grid"><\/div>\s*<ul id="byte-legend" class="byte-legend" hidden><li class="legend-caption" data-i18n="byte\.legend"><\/li><\/ul>/);
   assert.equal(tag('byte-legend').name, 'ul');
   assert.doesNotMatch(section, /<(?:input|select|textarea|button)\b/, 'no controls');
 });
 
-test('Section 4 (computation): rail, position line, the stage with six boards (padding visible first), then the overflow line', () => {
+test('Section 4 (computation): rail, position line, the stage with the five panels (a) to (e) all visible, then the overflow line', () => {
   const section = sliceBetween('compute', 'result');
   assert.match(section, /<nav id="stage-rail"[\s\S]*<\/nav>\s*<p class="position-line"><span id="position-block"><\/span><span id="position-index"><\/span><\/p>\s*<section id="stage" class="stage" aria-labelledby="stage-title">\s*<h3 id="stage-title" class="sr-only" data-i18n="stage\.title"><\/h3>/);
   assert.match(main[1], /<\/section>\s*<p id="dropped-stats" class="dropped-stats"><\/p>\s*<\/section>\s*<section id="result"/, 'the overflow statistics close the section');
   const stage = sliceBetween('stage', 'dropped-stats');
-  const boards = [...stage.matchAll(/id="board-(\w+)"/g)].map(match => match[1]);
-  assert.deepEqual(boards, BOARDS);
-  for (const name of BOARDS) {
-    const board = tag('board-' + name).attrs;
+  const panels = [...stage.matchAll(/id="board-(\w+)"/g)].map(match => match[1]);
+  assert.deepEqual(panels, PANELS.map(panel => panel.name), 'message block, schedule, round, final addition, digest in document order');
+  assert.doesNotMatch(stage, /board-pad|board-split/, 'padding and split share the message block panel');
+  for (const panel of PANELS) {
+    const board = tag('board-' + panel.name).attrs;
     assert.match(board, /^<section\b/);
     assert.equal(attribute(board, 'class'), 'board');
-    assert.equal(attribute(board, 'aria-labelledby'), 'board-' + name + '-title');
-    assert.equal(/\bhidden\b/.test(board), name !== 'pad', 'board-' + name + ' visibility');
-    assert.equal(tag('board-' + name + '-title').name, 'h3');
-    assert.match(stage, new RegExp('<h3 id="board-' + name + '-title"[^>]*></h3><div class="board-body"></div></section>'));
+    assert.equal(attribute(board, 'aria-labelledby'), 'board-' + panel.name + '-title');
+    assert.doesNotMatch(board, /\bhidden\b/, 'every panel is visible: the whole computation is laid out at once');
+    assert.equal(tag('board-' + panel.name + '-title').name, 'h3');
+    assert.equal(attribute(tag('board-' + panel.name + '-title').attrs, 'data-i18n'), panel.key, panel.name + ' title key');
+    assert.match(stage, new RegExp('<h3 id="board-' + panel.name + '-title" data-i18n="' + panel.key.replace(/\./g, '\\.') + '"></h3><div class="board-body"></div></section>'), panel.name + ' body is built by app.js');
   }
-  for (const name of ['schedule', 'round']) assert.equal(attribute(tag('board-' + name + '-title').attrs, 'data-i18n'), null, name + ' title takes {t} from app.js');
+  assert.doesNotMatch(section, /<(?:input|select|textarea)\b/, 'the rail buttons are the only static controls');
 });
 
-test('The stage rail has seven phase buttons in order and the position slots', () => {
+test('The stage rail has six phase buttons in order (no input button) and the position slots', () => {
   const rail = /<nav id="stage-rail"([^>]*)>([\s\S]*?)<\/nav>/.exec(html);
   assert.ok(rail);
   assert.match(rail[1], /data-i18n-label="rail\.title"/);
@@ -230,11 +250,12 @@ test('The stage rail has seven phase buttons in order and the position slots', (
     assert.match(attrs, /\btype="button"/);
     assert.equal(attribute(attrs, 'data-i18n'), 'rail.' + attribute(attrs, 'data-phase'));
   }
+  assert.doesNotMatch(html, /data-phase="input"|rail\.input/);
   assert.equal(tag('position-block').name, 'span');
   assert.equal(tag('position-index').name, 'span');
 });
 
-test('Section 5 (output): heading row with the badge, the digest band, the note, the radix, five copy buttons and the comparison', () => {
+test('Section 5 (output): heading row with the badge, the digest band, the note, the radix, the copy heading with five buttons and the comparison', () => {
   const result = tag('result');
   assert.equal(result.name, 'section');
   assert.equal(attribute(result.attrs, 'aria-labelledby'), 'result-title');
@@ -244,8 +265,9 @@ test('Section 5 (output): heading row with the badge, the digest band, the note,
   const radix = /<select id="radix-select">([\s\S]*?)<\/select>/.exec(section)[1];
   assert.deepEqual([...radix.matchAll(/value="(\w+)"/g)].map(match => match[1]), ['hex', 'bin', 'dec']);
   assert.deepEqual([...radix.matchAll(/data-i18n="([\w.]+)"/g)].map(match => match[1]), ['result.radix.hex', 'result.radix.bin', 'result.radix.dec']);
-  const actions = /<div class="actions result-actions">([\s\S]*?)<\/div>/.exec(section);
-  assert.ok(actions);
+  const actions = /<div class="actions result-actions" role="group" aria-labelledby="copy-title">([\s\S]*?)<\/div>/.exec(section);
+  assert.ok(actions, 'the copy row is a labelled group');
+  assert.match(actions[1], /^\s*<span id="copy-title" class="actions-label" data-i18n="copy\.title"><\/span>/, 'the copy heading opens the row');
   const buttons = [...actions[1].matchAll(/<button id="([\w-]+)" type="button" data-i18n="(copy\.\w+)"><\/button>/g)];
   assert.deepEqual(buttons.map(match => match[1]), ['copy-hash', 'copy-bytes-spaced', 'copy-bytes-joined', 'copy-sha256sum', 'copy-worksheet']);
   assert.deepEqual(buttons.map(match => match[2]), ['copy.hash', 'copy.bytesSpaced', 'copy.bytesJoined', 'copy.sha256sum', 'copy.worksheet']);
@@ -263,13 +285,12 @@ test('Live regions: announcement is polite, errors and the match badge are statu
   assert.equal(attribute(tag('compare-result').attrs, 'role'), 'status');
 });
 
-test('Header: title, then two round icon buttons (language, theme) right-aligned, then the description', () => {
-  const header = /<header class="page-header">([\s\S]*?)<\/header>/.exec(html);
+test('Header: title, then three round icon buttons (language, theme, help) right-aligned, then the description', () => {
   assert.ok(header);
   assert.match(header[1], /^\s*<h1 data-i18n="title"><\/h1>\s*<div class="header-tools">[\s\S]*<\/div>\s*<p data-i18n="description"><\/p>\s*$/);
   const tools = /<div class="header-tools">([\s\S]*?)<\/div>/.exec(header[1])[1];
   const buttons = [...tools.matchAll(/<button\b([^>]*)>/g)].map(match => match[1]);
-  assert.deepEqual(buttons.map(attrs => attribute(attrs, 'id')), ['lang-toggle', 'theme-toggle']);
+  assert.deepEqual(buttons.map(attrs => attribute(attrs, 'id')), ['lang-toggle', 'theme-toggle', 'help-button']);
   for (const attrs of buttons) {
     assert.equal(attribute(attrs, 'class'), 'icon-button');
     assert.equal(attribute(attrs, 'type'), 'button');
@@ -278,35 +299,57 @@ test('Header: title, then two round icon buttons (language, theme) right-aligned
   }
   assert.equal(attribute(buttons[0], 'data-i18n-label'), 'language');
   assert.equal(attribute(buttons[1], 'data-i18n-label'), 'theme.toLight', 'dark is the default, so the button offers light');
+  assert.equal(attribute(buttons[2], 'data-i18n-label'), 'help.title');
+  assert.equal(attribute(buttons[2], 'aria-haspopup'), 'dialog');
   const lang = /<button id="lang-toggle"[^>]*>([\s\S]*?)<\/button>/.exec(tools)[1];
   const theme = /<button id="theme-toggle"[^>]*>([\s\S]*?)<\/button>/.exec(tools)[1];
+  const help = /<button id="help-button"[^>]*>([\s\S]*?)<\/button>/.exec(tools)[1];
   assert.deepEqual([...lang.matchAll(/<svg\b([^>]*)>/g)].map(match => attribute(match[1], 'class')), ['icon-translate']);
+  assert.deepEqual([...help.matchAll(/<svg\b([^>]*)>/g)].map(match => attribute(match[1], 'class')), ['icon-help']);
   const themeIcons = [...theme.matchAll(/<svg\b([^>]*)>/g)].map(match => match[1]);
   assert.deepEqual(themeIcons.map(attrs => attribute(attrs, 'class')), ['icon-sun', 'icon-moon']);
   assert.doesNotMatch(themeIcons[0], /\shidden(?:\s|$)/, 'the sun shows while the page is dark');
   assert.match(themeIcons[1], /\shidden(?:\s|$)/, 'the moon waits for the light theme');
-  assert.doesNotMatch(lang + theme, /[^\s<>]+(?=<)/, 'icon buttons have no text of their own');
+  assert.doesNotMatch(lang + theme + help, /[^\s<>]+(?=<)/, 'icon buttons have no text of their own');
+});
+
+test('Help dialog: after the footer, labelled by its h2, with the close icon button and an empty body that app.js fills', () => {
+  assert.ok(dialog);
+  assert.match(html, /<\/footer>\s*<dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">/, 'the dialog follows the footer');
+  assert.doesNotMatch(dialog[1], /\bopen\b/, 'closed until the help button is pressed');
+  assert.match(dialog[2], /^\s*<div class="help-inner">\s*<div class="help-head">\s*<h2 id="help-title" data-i18n="help\.title"><\/h2>\s*<button id="help-close" class="icon-button" type="button" data-i18n-label="help\.close">\s*<svg class="icon-close"[\s\S]*?<\/svg>\s*<\/button>\s*<\/div>\s*<div id="help-body" class="help-body"><\/div>\s*<\/div>\s*$/);
+  assert.doesNotMatch(dialog[2], /<a\b|https?:/, 'no links in the help');
+  assert.match(html, /<\/dialog>\s*<\/body>/, 'the dialog is the last element of the body');
 });
 
 test('Inline SVG icons are static line art: 24-unit viewBox, currentColor stroke, hidden from AT, no style or size attributes', () => {
   const svgs = [...html.matchAll(/<svg\b([^>]*)>([\s\S]*?)<\/svg>/g)];
-  assert.equal(svgs.length, 3);
+  assert.equal(svgs.length, 5, 'translate, sun, moon, help, close');
   for (const [, attrs, body] of svgs) {
     for (const [name, value] of Object.entries(SVG_ATTRIBUTES)) assert.equal(attribute(attrs, name), value, name);
     assert.doesNotMatch(attrs, /\s(?:style|width|height|on\w+|xmlns:xlink|id)=/);
     assert.doesNotMatch(body, /\s(?:style|on\w+|fill|stroke|class|id)=|<(?:script|style|a|image|foreignObject|use|text)\b|href=/);
     assert.match(body, /^(?:\s*<(?:path|circle|line|ellipse|polyline|rect)\b[^>]*\/>)+\s*$/, 'only self-closing shapes');
   }
-  assert.ok(!/<svg\b[^>]*>[\s\S]*?<\/svg>/.test(html.replace(/<header class="page-header">[\s\S]*?<\/header>/, '')), 'icons live in the header only');
+  const elsewhere = html.replace(header[0], '').replace(dialog[0], '');
+  assert.ok(!/<svg\b[\s\S]*?<\/svg>/.test(elsewhere), 'icons live in the header and the help dialog only');
 });
 
-test('Clock controls expose the contract options', () => {
+test('Clock: labelled by its bold heading, the position text beside it, then the slider row and the button row', () => {
+  const clock = /<div id="clock"([^>]*)>([\s\S]*?)<\/div>\s*<\/main>/.exec(html);
+  assert.ok(clock);
+  assert.equal(attribute(clock[1], 'role'), 'group');
+  assert.equal(attribute(clock[1], 'aria-labelledby'), 'clock-title');
+  assert.doesNotMatch(clock[1], /data-i18n-label/, 'the visible heading labels the group');
+  assert.match(clock[2], /^\s*<div class="clock-inner">\s*<div class="clock-head">\s*<strong id="clock-title" class="clock-title" data-i18n="clock\.title"><\/strong>\s*<span id="clock-position" class="clock-position"><\/span>\s*<\/div>\s*<div class="clock-row clock-row-range">/);
+  assert.match(clock[2], /<\/div>\s*<div class="clock-row clock-row-buttons">\s*<button id="clock-first"/);
   const granularity = /<select id="granularity">([\s\S]*?)<\/select>/.exec(html)[1];
   assert.deepEqual([...granularity.matchAll(/value="(\w+)"/g)].map(match => match[1]), ['step', 'eight', 'phase', 'block']);
   const speed = /<select id="clock-speed">([\s\S]*?)<\/select>/.exec(html)[1];
   const speeds = [...speed.matchAll(/value="([\d.]+)"/g)].map(match => Number(match[1]));
   assert.deepEqual(speeds, [0.25, 0.5, 1, 2, 4, 8]);
   assert.equal((speed.match(/\bselected\b/g) || []).length, 1);
+  assert.match(speed, /<option value="1" selected>1x<\/option>/, '1x is the default: about one step per second');
   const range = tag('clock-range').attrs;
   assert.equal(attribute(range, 'type'), 'range');
   for (const name of ['min', 'max', 'step', 'value', 'aria-valuetext']) assert.notEqual(attribute(range, name), null, name);
@@ -316,9 +359,8 @@ test('Clock controls expose the contract options', () => {
     assert.equal(attribute(button, 'data-i18n-label'), 'clock.' + id.slice('clock-'.length));
   }
   assert.equal(attribute(tag('clock-play').attrs, 'aria-pressed'), 'false');
-  assert.equal(attribute(tag('clock').attrs, 'data-i18n-label'), 'clock.title');
   assert.doesNotMatch(html, /theme-select|settings\.theme\b/);
-  for (const id of ['copy-hash', 'copy-bytes-spaced', 'copy-bytes-joined', 'copy-sha256sum', 'copy-worksheet', 'lang-toggle', 'theme-toggle']) {
+  for (const id of ['copy-hash', 'copy-bytes-spaced', 'copy-bytes-joined', 'copy-sha256sum', 'copy-worksheet', 'lang-toggle', 'theme-toggle', 'help-button', 'help-close']) {
     assert.match(tag(id).attrs, /^<button\b[^>]*\btype="button"/, id);
   }
 });

@@ -83,7 +83,7 @@ test('No fixed width above 288px in width, min-width, flex-basis, flex or grid c
   const tracks = [...declarations.matchAll(/grid-template-columns\s*:\s*([^;}]+)/g)].flatMap(match => [...match[1].matchAll(/(\d+)px/g)].map(px => Number(px[1])));
   assert.deepEqual(tracks.filter(value => value > 288), [], 'no wide fixed grid track at any width');
   const maxWidths = [...declarations.matchAll(/max-width\s*:\s*(\d+)px/g)].map(match => Number(match[1])).sort((a, b) => a - b);
-  assert.deepEqual(maxWidths, [1040, 1288, 1320], 'the column (1040px), the clock inner (1288px) and the body (1320px)');
+  assert.deepEqual(maxWidths, [280, 640, 1040, 1288, 1320], 'the clock heading cell (280px), the help dialog (640px), the column (1040px), the clock inner (1288px) and the body (1320px)');
   assert.doesNotMatch(declarations, /(?:^|[;{\s])height\s*:\s*\d{3,}px/, 'no tall fixed heights');
   assert.doesNotMatch(css, /\bvh\b|\d+vh\b/, 'use dvh, not vh');
 });
@@ -160,12 +160,12 @@ test('Boards: no side frame below 390px (the 16-cell band needs 271px of the 274
   assert.match(rule('.sum-row'), /justify-content:\s*space-between;/);
 });
 
-test('Digest band: 2px frame on the surface, 8-digit groups in 2 columns at 1.375rem, 4 columns at 1.5rem from 768px and 8 columns at 1.375rem from 1280px', () => {
+test('Digest band: 2px frame on the page background, 8-digit groups in 2 columns at 1.375rem, 4 columns at 1.5rem from 768px and 8 columns at 1.375rem from 1280px', () => {
   const groups = rule('.digest-groups');
   assert.match(groups, /display:\s*grid;/);
   assert.match(groups, /grid-template-columns:\s*repeat\(2, max-content\);/);
   assert.match(groups, /border:\s*2px solid var\(--line\);/);
-  assert.match(groups, /background:\s*var\(--surface\);/);
+  assert.match(groups, /background:\s*var\(--bg\);/, 'the band is a well like the input fields');
   assert.match(groups, /color:\s*var\(--fg\);/);
   assert.match(groups, /font-size:\s*1\.375rem;/);
   assert.match(ruleIn(media('(min-width: 768px)'), '.digest-groups'), /grid-template-columns:\s*repeat\(4, max-content\);[^}]*font-size:\s*1\.5rem;/);
@@ -173,6 +173,7 @@ test('Digest band: 2px frame on the surface, 8-digit groups in 2 columns at 1.37
   assert.match(css, /\.digest-groups:empty\s*\{\s*display:\s*none;/);
   assert.match(rule('.digest-groups span'), /white-space:\s*nowrap;/);
   assert.match(rule('.digest-groups[data-radix="bin"]'), /grid-template-columns:\s*minmax\(0, 1fr\);/);
+  assert.match(ruleIn(media('(min-width: 1280px)'), '.digest-groups[data-radix="bin"]'), /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/, 'binary: two words per row, four rows, from 1280px');
   assert.match(/^[^{]*\{/.exec(plain.slice(plain.indexOf('.digest-groups, .sum')))[0], /\.digest-groups/, 'digest groups use the monospace stack');
   const head = rule('.result-head');
   assert.match(head, /display:\s*flex;[^}]*flex-wrap:\s*wrap;[^}]*justify-content:\s*flex-end;/);
@@ -197,11 +198,21 @@ test('Fonts: no Segoe UI, no web fonts or imports, the monospace stack with tabu
   }
 });
 
-test('The clock is fixed to the bottom of the viewport and the body leaves room for it through --clock-height', () => {
+test('The clock is fixed to the bottom on the surface color under a role-1 rule, with its heading cell, and the body leaves room for it through --clock-height', () => {
   const clock = rule('.clock');
   assert.match(clock, /position:\s*fixed;/);
   assert.match(clock, /inset-block-end:\s*0;/);
   assert.match(clock, /inset-inline:\s*0;/);
+  assert.match(clock, /border-block-start:\s*1px solid var\(--role1\);/, 'a thin role-1 rule on top, no glow');
+  assert.match(clock, /background:\s*var\(--surface\);/, 'the bar stands apart from the page background');
+  const head = rule('.clock-head');
+  assert.match(head, /display:\s*flex;[^}]*flex-wrap:\s*wrap;/);
+  assert.match(head, /font-size:\s*14px;/);
+  assert.match(rule('.clock-title'), /font-weight:\s*700;/);
+  assert.match(rule('#clock-range'), /flex:\s*1 1 120px;[^}]*min-width:\s*100px;/);
+  const wide = media('(min-width: 768px)');
+  assert.match(ruleIn(wide, '.clock-inner'), /grid-template-columns:\s*auto minmax\(120px, 1fr\) auto;/, 'one row from 768px: heading, slider, buttons');
+  assert.match(ruleIn(wide, '.clock-head'), /max-width:\s*280px;/);
   assert.match(rule('body'), /padding:\s*16px 16px var\(--clock-height\);/);
   assert.match(rule(':root'), /--clock-height:\s*\d+px;/);
   assert.doesNotMatch(css, /--dock-offset|--rail-width/);
@@ -232,6 +243,75 @@ test('Breakpoints: 16- and 32-cell bands, 8- and 16-byte rows, the bit cell size
     assert.match(css, pattern, 'bit cell ' + cell + 'px');
   }
   assert.match(rule('.stage-rail'), /overflow-x:\s*auto;/);
+});
+
+test('Computation panels: the active panel frame, word rows without side padding, role-colored reference rows and message-block bit kinds', () => {
+  assert.match(rule('.board.is-active'), /border-color:\s*var\(--role1\);/);
+  const row = rule('.w-row');
+  assert.match(row, /display:\s*flex;[^}]*flex-wrap:\s*wrap;/);
+  assert.match(row, /padding:\s*2px 0;/, 'the 16-cell band fills the 274px content box at 320px');
+  assert.match(row, /border:\s*1px solid transparent;/);
+  assert.match(rule('.w-row.is-current'), /border-color:\s*var\(--role1\);[^}]*outline:\s*1px solid var\(--role1\);/);
+  assert.match(rule('.w-rows.is-current'), /outline:\s*1px solid var\(--role1\);/);
+  assert.match(rule('.w-row[data-ref="16"], .w-row[data-ref="7"]'), /border-color:\s*var\(--role2\);/, 'words added as they are');
+  assert.match(rule('.w-row[data-ref="15"], .w-row[data-ref="2"]'), /border-color:\s*var\(--role3\);/, 'words fed to sigma');
+  assert.match(rule('.w-index'), /color:\s*var\(--role1\);[^}]*font:\s*14px\/1\.5 var\(--mono\);/);
+  assert.match(rule('.bit.k-message'), /border-color:\s*var\(--role1\);/);
+  assert.match(rule('.bit.k-one'), /border-color:\s*var\(--role2\);/);
+  assert.match(rule('.bit.k-zeros'), /border-style:\s*dotted;/);
+  assert.match(rule('.bit.k-length'), /border-color:\s*var\(--role3\);/);
+  assert.match(rule('.insert'), /border-block:\s*1px solid var\(--role1\);/, 'narrow boards tie the bands to the row with rules above and below');
+  assert.match(ruleIn(media('(min-width: 768px)'), '.insert'), /border-inline-start:\s*2px solid var\(--role1\);/);
+  assert.doesNotMatch(css, /\.board\[hidden\]|#board-pad|#board-split/);
+});
+
+test('Round table: row buttons that wrap their values into 10ch columns below 768px and stand in nine columns with the heading row from 768px', () => {
+  const row = rule('.rt-row');
+  assert.match(row, /display:\s*grid;/);
+  assert.match(row, /grid-template-columns:\s*repeat\(auto-fill, minmax\(10ch, 1fr\)\);/);
+  assert.match(row, /width:\s*100%;/);
+  assert.match(row, /background:\s*transparent;/);
+  assert.match(row, /font:\s*14px\/1\.5 var\(--mono\);/);
+  assert.match(row, /text-align:\s*start;/);
+  assert.match(rule('.rt-row.is-current'), /border-color:\s*var\(--role1\);[^}]*outline:\s*1px solid var\(--role1\);/);
+  assert.match(rule('.rt-head'), /display:\s*none;/);
+  const wide = media('(min-width: 768px)');
+  assert.match(ruleIn(wide, '.rt-head'), /display:\s*grid;[^}]*grid-template-columns:\s*3ch repeat\(8, minmax\(8ch, 1fr\)\);/);
+  assert.match(ruleIn(wide, '.rt-row'), /grid-template-columns:\s*3ch repeat\(8, minmax\(8ch, 1fr\)\);/);
+  assert.match(ruleIn(wide, '.rt-key'), /clip-path:\s*inset\(50%\);/, 'the register letters are read by AT only once the heading row shows');
+  assert.match(rule('.rt-cell'), /white-space:\s*nowrap;/);
+});
+
+test('Help dialog: surface, 1px rule, 640px at most, scrolls vertically, no padding on the element, backdrop from the page background', () => {
+  const dialog = rule('.help-dialog');
+  assert.match(dialog, /max-width:\s*640px;/);
+  assert.match(dialog, /width:\s*calc\(100% - 32px\);/);
+  assert.match(dialog, /padding:\s*0;/);
+  assert.match(dialog, /border:\s*1px solid var\(--line\);/);
+  assert.match(dialog, /background:\s*var\(--surface\);/);
+  assert.match(dialog, /color:\s*var\(--fg\);/);
+  assert.match(dialog, /overflow:\s*auto;/);
+  assert.match(dialog, /max-height:\s*calc\(100dvh - 32px\);/);
+  assert.match(rule('.help-dialog::backdrop'), /background:\s*var\(--bg\);[^}]*opacity:\s*0\.7;/);
+  assert.match(rule('.help-head'), /display:\s*flex;[^}]*justify-content:\s*space-between;/);
+  assert.match(rule('.help-keys'), /grid-template-columns:\s*max-content minmax\(0, 1fr\);/);
+  assert.match(rule('kbd'), /border:\s*1px solid var\(--border\);[^}]*font-family:\s*var\(--mono\);/);
+});
+
+test('Copy row and legend: the copy heading with tighter gaps, the legend rule and caption, faded labels of disabled settings', () => {
+  assert.match(rule('.result-actions'), /gap:\s*8px 12px;/);
+  assert.match(rule('.result-actions button'), /padding-inline:\s*0\.5rem;/);
+  assert.match(rule('.actions-label'), /font-weight:\s*600;/);
+  assert.match(rule('.byte-legend'), /border-block-start:\s*1px solid var\(--line\);/);
+  assert.match(rule('.legend-caption'), /color:\s*var\(--muted\);/);
+  assert.match(rule('#input-options[data-off] label'), /color:\s*var\(--muted\);/);
+});
+
+test('Motion: no keyframes, the step moves classes only; transitions stay on transform and opacity', () => {
+  assert.doesNotMatch(css, /@keyframes/);
+  assert.match(rule('.bit, .tile, .lane'), /transition:\s*transform 300ms, opacity 300ms;/);
+  assert.doesNotMatch(css, /transition:[^;}]*(?:border|outline|color|background)/, 'emphasis switches at once');
+  assert.doesNotMatch(css, /scroll-behavior:\s*smooth/);
 });
 
 test('app.js uses no style attribute, innerHTML or insertRule', () => {

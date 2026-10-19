@@ -1,7 +1,7 @@
 /* Tests for messages.js and the wording rules of CLAUDE.md: identical key sets
  * and substitutions in both languages, the key list of the contract (the five
  * section headings in the section.* namespace, no tab, guide, learn, settings or
- * dock keys), the keys referenced by index.html and app.js, no Japanese (or any
+ * dock keys, the compute.* and help.* namespaces), the keys referenced by index.html and app.js, no Japanese (or any
  * non-ASCII) in the JavaScript outside the Japanese values of messages.js, the
  * words the Japanese copy avoids, no spaces between Japanese and Latin
  * characters, polite sentence endings, no claims of tamper prevention or
@@ -49,22 +49,27 @@ const REQUIRED = [
   'error.hex.odd-length', 'error.hex.invalid-char', 'error.limit', 'error.generic', 'error.cryptoUnavailable', 'error.fragment', 'error.fragmentLimit',
   'warning.dump-like', 'warning.hash-like', 'warning.lone-surrogate',
   'preset.group.basic', 'preset.group.bytes', 'preset.group.newline', 'preset.group.unicode', 'preset.group.day117',
-  'rail.title', 'rail.input', 'rail.pad', 'rail.split', 'rail.schedule', 'rail.round', 'rail.final', 'rail.digest', 'rail.block',
+  'rail.title', 'rail.pad', 'rail.split', 'rail.schedule', 'rail.round', 'rail.final', 'rail.digest', 'rail.block',
+  'compute.block.title', 'compute.block.note', 'compute.block.lengthNote', 'compute.block.tab', 'compute.block.tabs', 'compute.block.chain',
+  'compute.schedule.title', 'compute.schedule.fromBlock', 'compute.schedule.ref', 'compute.schedule.legend.current', 'compute.schedule.legend.direct', 'compute.schedule.legend.sigma',
+  'compute.round.title', 'compute.round.registers', 'compute.round.registersAfter', 'compute.round.table', 'compute.round.tableHint', 'compute.final.hin', 'compute.final.hout',
   'phase.pad', 'phase.split', 'phase.schedule', 'phase.round', 'phase.final', 'phase.digest',
   'stage.title', 'stage.dropped',
-  'board.pad.title', 'board.pad.message', 'board.pad.one', 'board.pad.zeros', 'board.pad.length', 'board.pad.blocks', 'board.pad.boundary',
-  'board.split.title', 'board.split.word',
-  'board.schedule.title', 'board.schedule.refs', 'board.schedule.sigma0', 'board.schedule.sigma1', 'board.schedule.rotr', 'board.schedule.shr', 'board.schedule.sum', 'board.schedule.fromBlock',
-  'board.round.title', 'board.round.before', 'board.round.after', 'board.round.S1', 'board.round.ch', 'board.round.S0', 'board.round.maj',
+  'board.pad.message', 'board.pad.one', 'board.pad.zeros', 'board.pad.length', 'board.pad.blocks', 'board.pad.boundary',
+  'board.schedule.refs', 'board.schedule.sigma0', 'board.schedule.sigma1', 'board.schedule.rotr', 'board.schedule.shr', 'board.schedule.sum', 'board.schedule.fromBlock',
+  'board.round.after', 'board.round.S1', 'board.round.ch', 'board.round.S0', 'board.round.maj',
   'board.round.T1', 'board.round.T2', 'board.round.newE', 'board.round.newA', 'board.round.K', 'board.round.W', 'board.round.newly',
   'board.final.title', 'board.final.lane', 'board.digest.title', 'board.digest.concat',
   'board.raw', 'board.dropped', 'board.out', 'board.overflow',
   'result.emptyNote', 'result.match.ok', 'result.match.ng', 'result.match.unknown', 'result.match.pending', 'result.radix', 'result.radix.hex', 'result.radix.bin', 'result.radix.dec',
-  'copy.hash', 'copy.bytesSpaced', 'copy.bytesJoined', 'copy.sha256sum', 'copy.worksheet', 'copy.done', 'copy.failed', 'copy.fallback',
+  'copy.title', 'copy.hash', 'copy.bytesSpaced', 'copy.bytesJoined', 'copy.sha256sum', 'copy.worksheet', 'copy.done', 'copy.failed', 'copy.fallback',
   'compare.label', 'compare.placeholder', 'compare.match', 'compare.mismatch', 'compare.none', 'compare.multiple', 'compare.normalized',
   'clock.title', 'clock.range', 'clock.first', 'clock.prev', 'clock.play', 'clock.pause', 'clock.next', 'clock.last', 'clock.granularity',
   'clock.granularity.step', 'clock.granularity.eight', 'clock.granularity.phase', 'clock.granularity.block', 'clock.speed', 'clock.position',
   'theme.toLight', 'theme.toDark',
+  'help.title', 'help.close', 'help.can.title', 'help.can.1', 'help.can.2', 'help.can.3', 'help.cannot.title', 'help.cannot.body',
+  'help.how.title', 'help.how.body', 'help.how.clock', 'help.keys.title', 'help.keys.arrows', 'help.keys.shiftArrows', 'help.keys.page', 'help.keys.homeEnd',
+  'help.keys.digits', 'help.keys.space', 'help.keys.help', 'help.keys.note', 'help.input.title', 'help.input.body', 'help.privacy.title', 'help.reference',
   'privacy', 'author', 'repository', 'noscript.ja', 'noscript.en', 'busy', 'ready'
 ];
 /* Keys of the retired entrances, panels and dock (and the headings they replaced). */
@@ -72,18 +77,21 @@ const RETIRED = [
   'tabs', 'tab.guide', 'tab.free', 'tab.learn', 'tab.settings', 'guide.placeholder', 'learn.placeholder', 'learn.section.1', 'learn.section.12',
   'dock.title', 'dock.match.ok', 'dock.match.ng', 'dock.match.unknown', 'dock.match.pending', 'dock.radix', 'dock.radix.hex', 'dock.dropped', 'dock.copy', 'dock.digest',
   'settings.title', 'settings.themeNote', 'settings.motion', 'settings.motion.note', 'settings.theme', 'settings.theme.dark', 'settings.theme.light',
-  'input.title', 'byte.title', 'result.title'
+  'input.title', 'byte.title', 'result.title',
+  /* Retired with the computation laid out at once: the input rail button and the per-phase board titles. */
+  'rail.input', 'board.pad.title', 'board.split.title', 'board.split.word', 'board.schedule.title', 'board.round.title', 'board.round.before'
 ];
 const SUBSTITUTIONS = {
   'stats.newlines': ['cr', 'crlf', 'lf'], 'stats.loneSurrogates': ['n'],
   'error.hex.odd-length': ['column', 'line', 'position'], 'error.hex.invalid-char': ['char', 'column', 'line', 'name', 'position'],
   'error.limit': ['max'], 'error.fragmentLimit': ['max'], 'warning.lone-surrogate': ['n'], 'rail.block': ['n', 'total'],
   'phase.schedule': ['t'], 'phase.round': ['t'], 'board.pad.zeros': ['count'], 'board.pad.length': ['bits'], 'board.pad.blocks': ['n'],
-  'board.schedule.title': ['t'], 'board.schedule.rotr': ['n'], 'board.schedule.shr': ['n'], 'board.round.title': ['t'],
+  'board.schedule.rotr': ['n'], 'board.schedule.shr': ['n'],
+  'compute.block.tab': ['n'], 'compute.schedule.ref': ['n'], 'compute.round.registers': ['t'], 'compute.round.registersAfter': ['t'], 'compute.final.hin': ['i'], 'compute.final.hout': ['i'],
   'board.final.lane': ['i'], 'board.dropped': ['n'], 'stage.dropped': ['f', 'ft', 'm', 's', 'st', 't', 'tt'],
   'compare.multiple': ['n'], 'clock.position': ['id']
 };
-const NAMESPACES = /^(?:title|description|language|privacy|author|repository|busy|ready|noscript\.(?:ja|en)|(?:section|input|stats|byte|cls|error|warning|preset|rail|phase|stage|board|result|copy|compare|clock|theme)\..+)$/;
+const NAMESPACES = /^(?:title|description|language|privacy|author|repository|busy|ready|noscript\.(?:ja|en)|(?:section|input|stats|byte|cls|error|warning|preset|rail|phase|stage|board|compute|result|copy|compare|clock|theme|help)\..+)$/;
 
 const parameters = value => [...value.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
 
@@ -240,6 +248,35 @@ test('Claims do not present the tool as tamper prevention, verification or decry
   for (const [key, value] of Object.entries(messages.en)) assert.doesNotMatch(value, CLAIMS_EN, key);
   assert.match(messages.ja['compare.match'], /\u540c\u3058\u30d0\u30a4\u30c8\u5217/);
   assert.match(messages.en['compare.match'], /same bytes/);
+});
+
+test('Clock heading, copy heading and help: the clock names what it does, copy buttons are short, the help has no links and names the standard', () => {
+  /* keisan no okuri (step the computation). */
+  assert.equal(messages.ja['clock.title'], '\u8a08\u7b97\u306e\u9001\u308a');
+  assert.equal(messages.en['clock.title'], 'Step the computation');
+  /* kopii (copy) is the heading; the buttons no longer repeat "wo kopii" / "Copy". */
+  assert.equal(messages.ja['copy.title'], '\u30b3\u30d4\u30fc');
+  assert.equal(messages.en['copy.title'], 'Copy');
+  for (const key of ['copy.hash', 'copy.bytesSpaced', 'copy.bytesJoined', 'copy.sha256sum', 'copy.worksheet']) {
+    assert.doesNotMatch(messages.ja[key], /\u30b3\u30d4\u30fc/, key + ' ja repeats the heading');
+    assert.doesNotMatch(messages.en[key], /\bcopy\b/i, key + ' en repeats the heading');
+    assert.ok(messages.ja[key].length <= 16 && messages.en[key].length <= 24, key + ' is short enough for one row of five');
+  }
+  /* nagasa {bits} bitto (length N bits): the big-endian note moved to compute.block.lengthNote. */
+  assert.equal(messages.ja['board.pad.length'], '\u9577\u3055{bits}\u30d3\u30c3\u30c8');
+  assert.match(messages.ja['compute.block.lengthNote'], /64\u30d3\u30c3\u30c8/);
+  const help = Object.keys(messages.ja).filter(key => key.startsWith('help.'));
+  assert.ok(help.length >= 24, String(help.length));
+  assert.match(messages.ja['help.reference'], /FIPS 180-4/);
+  assert.match(messages.en['help.reference'], /FIPS 180-4/);
+  assert.match(messages.ja['help.cannot.body'], /crypto\.subtle/);
+  assert.match(messages.en['help.cannot.body'], /crypto\.subtle/);
+  /* The keyboard help names six digit targets, since the rail has six phases. */
+  assert.match(messages.ja['help.keys.digits'], /\u30d1\u30c7\u30a3\u30f3\u30b0.*\u30c0\u30a4\u30b8\u30a7\u30b9\u30c8/);
+  assert.match(messages.en['help.keys.digits'], /padding.*digest/);
+  for (const key of Object.keys(messages.ja)) {
+    for (const lang of ['ja', 'en']) assert.doesNotMatch(messages[lang][key], /https?:\/\/|www\./, lang + ' ' + key + ' has no link');
+  }
 });
 
 test('Preset inputs live outside the dictionary, are identical in both languages and all carry labels', () => {

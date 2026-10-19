@@ -26,6 +26,9 @@
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"/></svg>
         <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" hidden><path d="M20.5 13.5A8.5 8.5 0 1 1 10.5 3.5a7.2 7.2 0 0 0 10 10z"/></svg>
       </button>
+      <button id="help-button" class="icon-button" type="button" data-i18n-label="help.title" aria-haspopup="dialog">
+        <svg class="icon-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6.8c0 1.9-2.8 2.3-2.8 4.1"/><path d="M12 17.6h.01"/></svg>
+      </button>
     </div>
     <p data-i18n="description"></p>
   </header>
@@ -71,12 +74,11 @@
       <h2 id="bytes-title" class="section-title"><span class="section-number">3</span> <span id="bytes-title-text" data-i18n="section.bytes"></span></h2>
       <div id="input-stats" class="stats" data-i18n-label="stats.title"></div>
       <div id="byte-grid" class="byte-grid"></div>
-      <ul id="byte-legend" class="byte-legend" data-i18n-label="byte.legend"></ul>
+      <ul id="byte-legend" class="byte-legend" hidden><li class="legend-caption" data-i18n="byte.legend"></li></ul>
     </section>
     <section id="compute" class="card" aria-labelledby="compute-title">
       <h2 id="compute-title" class="section-title"><span class="section-number">4</span> <span data-i18n="section.compute"></span></h2>
       <nav id="stage-rail" class="stage-rail" data-i18n-label="rail.title">
-        <button type="button" data-phase="input" data-i18n="rail.input"></button>
         <button type="button" data-phase="pad" data-i18n="rail.pad"></button>
         <button type="button" data-phase="split" data-i18n="rail.split"></button>
         <button type="button" data-phase="schedule" data-i18n="rail.schedule"></button>
@@ -87,12 +89,11 @@
       <p class="position-line"><span id="position-block"></span><span id="position-index"></span></p>
       <section id="stage" class="stage" aria-labelledby="stage-title">
         <h3 id="stage-title" class="sr-only" data-i18n="stage.title"></h3>
-        <section id="board-pad" class="board" aria-labelledby="board-pad-title"><h3 id="board-pad-title" data-i18n="board.pad.title"></h3><div class="board-body"></div></section>
-        <section id="board-split" class="board" aria-labelledby="board-split-title" hidden><h3 id="board-split-title" data-i18n="board.split.title"></h3><div class="board-body"></div></section>
-        <section id="board-schedule" class="board" aria-labelledby="board-schedule-title" hidden><h3 id="board-schedule-title"></h3><div class="board-body"></div></section>
-        <section id="board-round" class="board" aria-labelledby="board-round-title" hidden><h3 id="board-round-title"></h3><div class="board-body"></div></section>
-        <section id="board-final" class="board" aria-labelledby="board-final-title" hidden><h3 id="board-final-title" data-i18n="board.final.title"></h3><div class="board-body"></div></section>
-        <section id="board-digest" class="board" aria-labelledby="board-digest-title" hidden><h3 id="board-digest-title" data-i18n="board.digest.title"></h3><div class="board-body"></div></section>
+        <section id="board-block" class="board" aria-labelledby="board-block-title"><h3 id="board-block-title" data-i18n="compute.block.title"></h3><div class="board-body"></div></section>
+        <section id="board-schedule" class="board" aria-labelledby="board-schedule-title"><h3 id="board-schedule-title" data-i18n="compute.schedule.title"></h3><div class="board-body"></div></section>
+        <section id="board-round" class="board" aria-labelledby="board-round-title"><h3 id="board-round-title" data-i18n="compute.round.title"></h3><div class="board-body"></div></section>
+        <section id="board-final" class="board" aria-labelledby="board-final-title"><h3 id="board-final-title" data-i18n="board.final.title"></h3><div class="board-body"></div></section>
+        <section id="board-digest" class="board" aria-labelledby="board-digest-title"><h3 id="board-digest-title" data-i18n="board.digest.title"></h3><div class="board-body"></div></section>
       </section>
       <p id="dropped-stats" class="dropped-stats"></p>
     </section>
@@ -106,7 +107,8 @@
       <div class="options-row">
         <label class="inline-field"><span data-i18n="result.radix"></span><select id="radix-select"><option value="hex" data-i18n="result.radix.hex"></option><option value="bin" data-i18n="result.radix.bin"></option><option value="dec" data-i18n="result.radix.dec"></option></select></label>
       </div>
-      <div class="actions result-actions">
+      <div class="actions result-actions" role="group" aria-labelledby="copy-title">
+        <span id="copy-title" class="actions-label" data-i18n="copy.title"></span>
         <button id="copy-hash" type="button" data-i18n="copy.hash"></button>
         <button id="copy-bytes-spaced" type="button" data-i18n="copy.bytesSpaced"></button>
         <button id="copy-bytes-joined" type="button" data-i18n="copy.bytesJoined"></button>
@@ -119,15 +121,19 @@
       </div>
       <p id="compare-result" class="compare-result" role="status"></p>
     </section>
-    <div id="clock" class="clock" role="group" data-i18n-label="clock.title">
+    <div id="clock" class="clock" role="group" aria-labelledby="clock-title">
       <div class="clock-inner">
-        <div class="clock-row">
+        <div class="clock-head">
+          <strong id="clock-title" class="clock-title" data-i18n="clock.title"></strong>
+          <span id="clock-position" class="clock-position"></span>
+        </div>
+        <div class="clock-row clock-row-range">
           <label for="clock-range" class="sr-only" data-i18n="clock.range"></label>
           <input id="clock-range" type="range" min="0" max="115" step="1" value="0" aria-valuetext="">
           <label for="clock-speed" class="sr-only" data-i18n="clock.speed"></label>
           <select id="clock-speed"><option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="4">4x</option><option value="8">8x</option></select>
         </div>
-        <div class="clock-row">
+        <div class="clock-row clock-row-buttons">
           <button id="clock-first" type="button" data-i18n-label="clock.first">&#8676;</button>
           <button id="clock-prev" type="button" data-i18n-label="clock.prev">&#8592;</button>
           <button id="clock-play" type="button" data-i18n-label="clock.play" aria-pressed="false">&#9654;</button>
@@ -140,5 +146,16 @@
     </div>
   </main>
   <footer><p data-i18n="privacy"></p><p data-i18n="author"></p><a href="https://github.com/ipusiron/sha256-byte-inspector" target="_blank" rel="noopener noreferrer" data-i18n="repository"></a></footer>
+  <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
+    <div class="help-inner">
+      <div class="help-head">
+        <h2 id="help-title" data-i18n="help.title"></h2>
+        <button id="help-close" class="icon-button" type="button" data-i18n-label="help.close">
+          <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div id="help-body" class="help-body"></div>
+    </div>
+  </dialog>
 </body>
 </html>

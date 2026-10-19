@@ -91,6 +91,21 @@ for (const [mode, index] of [['dark', 3], ['light', 4]]) {
   }
 }
 
+test('The clock bar and the help dialog sit on --surface: their text (fg, muted) reads at 4.5:1 and the role-1 rule at 3:1 in both themes', () => {
+  assert.match(css, /\.clock\s*\{[^}]*border-block-start:\s*1px solid var\(--role1\);[^}]*background:\s*var\(--surface\);/);
+  assert.match(css, /\.help-dialog\s*\{[^}]*background:\s*var\(--surface\);[^}]*color:\s*var\(--fg\);/);
+  for (const name of ['dark', 'light']) {
+    const p = palettes[name];
+    assert.ok(ratio(p.fg, p.surface) >= 4.5, name + ' fg/surface ' + ratio(p.fg, p.surface));
+    assert.ok(ratio(p.muted, p.surface) >= 4.5, name + ' muted/surface ' + ratio(p.muted, p.surface));
+    assert.ok(ratio(p.role1, p.surface) >= 3, name + ' role1/surface ' + ratio(p.role1, p.surface));
+    /* Buttons inside the clock keep their --border edge against the same surface. */
+    assert.ok(ratio(p.border, p.surface) >= 3, name + ' border/surface ' + ratio(p.border, p.surface));
+    /* The backdrop is --bg at 70% over the page; the dialog itself is opaque, so its text contrast is the surface pair above. */
+    assert.ok(ratio(p.bg, p.surface) < 1.5, name + ' bg/surface stays a faint step ' + ratio(p.bg, p.surface));
+  }
+});
+
 test('Decorative rules stay faint and do not compete with the numbers', () => {
   for (const name of ['dark', 'light']) {
     const line = ratio(palettes[name].line, palettes[name].bg);

@@ -5,9 +5,13 @@
  * Layout: one page, one column at every width. The main element stacks five
  * numbered cards read top-down (input, input settings, bytes after UTF-8 encoding,
  * the SHA-256 computation, output); from 1280px the column, the header and the
- * footer are 1040px wide and centered. The clock is fixed to the bottom and the body keeps room for it through
- * --clock-height (app.js measures the clock at start-up and on resize). The round
- * icon buttons for language and theme sit at the right end of the title row.
+ * footer are 1040px wide and centered. The computation card lays the whole
+ * computation out at once (message block, 64 schedule rows, the round with its
+ * 64-row table, the final addition, the digest) and the clock moves the emphasis.
+ * The clock is fixed to the bottom on the surface color with a thin role-1 rule,
+ * and the body keeps room for it through --clock-height (app.js measures the clock
+ * at start-up and on resize). The round icon buttons for language, theme and help
+ * sit at the right end of the title row; the help opens a <dialog>.
  * Reduced motion follows the OS setting (prefers-reduced-motion) only. */
 
 :root {
@@ -303,6 +307,12 @@ legend {
   margin-block: 0.25rem;
 }
 
+/* Hex mode disables the three text settings; their labels fade with them (app.js
+ * sets data-off on the section). */
+#input-options[data-off] label {
+  color: var(--muted);
+}
+
 .muted {
   color: var(--muted);
   font-size: 0.875rem;
@@ -494,12 +504,16 @@ main {
   border-color: var(--diff);
 }
 
+/* Legend of the byte classes other than plain text, shown only when the grid holds
+ * one. A rule and the caption separate it from the grid, and the swatch is smaller
+ * than a grid cell so the two do not mix. */
 .byte-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 16px;
-  margin: 0.5rem 0;
-  padding: 0;
+  margin: 0.75rem 0 0.25rem;
+  padding: 0.5rem 0 0;
+  border-block-start: 1px solid var(--line);
   list-style: none;
   font-size: 0.875rem;
 }
@@ -508,6 +522,11 @@ main {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.legend-caption {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .legend-swatch {
@@ -727,6 +746,217 @@ main {
 .segment.is-zeros { border-color: var(--line); border-style: dotted; }
 .segment.is-length { border-color: var(--role3); }
 
+.padding-segments {
+  padding: 2px;
+  border: 1px solid transparent;
+}
+
+.padding-segments.is-current {
+  border-color: var(--role1);
+}
+
+/* ---- the computation laid out at once (section 4) ---- */
+
+/* The panel that holds the current position takes a role-1 frame (the top rule only
+ * below 390px, where the boards have no side frame). */
+.board.is-active {
+  border-color: var(--role1);
+}
+
+.board-body > h4 {
+  margin-block: 0.5rem 0;
+}
+
+/* Ordinal buttons that choose the block to draw (two blocks or more). */
+.block-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.block-tabs button[aria-current="true"] {
+  color: var(--role1);
+  border-color: var(--role1);
+  font-weight: 700;
+}
+
+/* Word rows (message block, schedule): the index, the value tile, a tag (which
+ * reference, or "from the block") and the 32 bits, which wrap under the head where
+ * the row is narrower than the band. The current row has a role-1 frame; the rows
+ * the current schedule word reads carry their role color and a text tag. */
+.w-rows {
+  display: grid;
+  gap: 2px;
+}
+
+.w-rows.is-current {
+  outline: 1px solid var(--role1);
+  outline-offset: 1px;
+}
+
+/* No side padding: at 320px the 16-cell band (271px) and the row's own borders fill
+ * the 274px content box, at 390px the band (303px) and the frame fill 306px. */
+.w-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  min-width: 0;
+  padding: 2px 0;
+  border: 1px solid transparent;
+}
+
+.w-row.is-current {
+  border-color: var(--role1);
+  outline: 1px solid var(--role1);
+}
+
+.w-row[data-ref="16"], .w-row[data-ref="7"] { border-color: var(--role2); }
+.w-row[data-ref="15"], .w-row[data-ref="2"] { border-color: var(--role3); }
+
+.w-index {
+  min-width: 6ch;
+  color: var(--role1);
+  font: 14px/1.5 var(--mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+.w-row.is-current .w-index {
+  font-weight: 700;
+}
+
+.w-tag {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.w-row[data-ref="16"] .w-tag, .w-row[data-ref="7"] .w-tag { color: var(--role2); }
+.w-row[data-ref="15"] .w-tag, .w-row[data-ref="2"] .w-tag { color: var(--role3); }
+
+/* Bits of the message block: the border names the padding segment of the byte. */
+.bit.k-message { border-color: var(--role1); }
+.bit.k-one { border-color: var(--role2); }
+.bit.k-zeros { border-style: dotted; }
+.bit.k-length { border-color: var(--role3); }
+
+/* Legend of the row colors in the schedule panel. */
+.row-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.row-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-key {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line);
+}
+
+.legend-key.is-current { border-color: var(--role1); outline: 1px solid var(--role1); }
+.legend-key.is-direct { border-color: var(--role2); }
+.legend-key.is-sigma { border-color: var(--role3); }
+
+/* The bands of the current step, slotted under the current schedule row or under
+ * the working variables of the round. Role-1 rules above and below tie them to the
+ * row; from 768px a rule on the left does (narrow boards have no room to indent). */
+.insert {
+  display: grid;
+  gap: 12px;
+  margin: 4px 0 8px;
+  padding: 8px 0;
+  border-block: 1px solid var(--role1);
+}
+
+.insert > h4 {
+  margin: 0;
+}
+
+.register-lanes {
+  display: grid;
+  gap: 4px;
+}
+
+/* All 64 rounds: a heading row (from 768px) and 64 row buttons, each the round
+ * index and a to h after the round in hex. Below 768px a row wraps its values into
+ * as many 10ch columns as fit (the register letter, a space and 8 digits); from
+ * 768px the nine columns stand in one line under the heading row and the letters
+ * are read by assistive technology only. */
+.round-table {
+  display: grid;
+  gap: 2px;
+}
+
+.rt-head {
+  display: none;
+}
+
+.rt-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10ch, 1fr));
+  gap: 2px 8px;
+  width: 100%;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-block-end-color: var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--fg);
+  font: 14px/1.5 var(--mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+  text-align: start;
+}
+
+.rt-row:hover {
+  border-color: var(--border);
+}
+
+.rt-row.is-current {
+  border-color: var(--role1);
+  outline: 1px solid var(--role1);
+}
+
+.rt-index {
+  color: var(--role1);
+}
+
+.rt-cell {
+  white-space: nowrap;
+}
+
+.rt-key {
+  color: var(--muted);
+}
+
+/* Final addition: one group per lane with H_in, the register, the sum and H_out. */
+.final-lane {
+  display: grid;
+  gap: 4px;
+  padding-block: 6px;
+  border-block-end: 1px solid var(--line);
+}
+
+.final-lane:last-of-type {
+  border-block-end: 0;
+}
+
+.digest-lanes {
+  display: grid;
+  gap: 4px;
+}
+
 /* The overflow statistics close the computation section; nothing shows without a result. */
 .dropped-stats {
   margin-block: 0.75rem 0;
@@ -792,7 +1022,7 @@ main {
   gap: 4px 12px;
   padding: 8px 10px;
   border: 2px solid var(--line);
-  background: var(--surface);
+  background: var(--bg);
   color: var(--fg);
   font-size: 1.375rem;
   line-height: 1.4;
@@ -823,8 +1053,20 @@ main {
   margin: 0.25rem 0 0;
 }
 
+/* Copy: a small heading at the start of the row, then five short buttons. At 1040px
+ * the card's content box is 1006px wide, so the gaps and the button padding are
+ * tighter than the other option rows to keep the five on one line. */
+.result-actions {
+  gap: 8px 12px;
+}
+
 .result-actions button {
+  padding-inline: 0.5rem;
   text-align: start;
+}
+
+.actions-label {
+  font-weight: 600;
 }
 
 .result .field {
@@ -840,14 +1082,18 @@ main {
 
 /* ---- clock (fixed at the bottom; hidden while a textarea has focus) ---- */
 
+/* The bar sits on the surface color under a thin role-1 rule, so it reads as a
+ * separate instrument from the page. Below 768px it is three rows (heading and
+ * position, slider and speed, buttons and step size) within 150px; from 768px one
+ * row. The body's bottom padding (--clock-height) keeps the content clear of it. */
 .clock {
   position: fixed;
   inset-inline: 0;
   inset-block-end: 0;
   z-index: 10;
-  padding: 6px 16px;
-  border-block-start: 1px solid var(--line);
-  background: var(--bg);
+  padding: 4px 16px;
+  border-block-start: 1px solid var(--role1);
+  background: var(--surface);
 }
 
 .clock.is-hidden {
@@ -856,9 +1102,29 @@ main {
 
 .clock-inner {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   max-width: 1288px;
   margin: 0 auto;
+}
+
+/* The bold heading names the instrument; the position text follows on the same
+ * line and wraps under it when the bar is narrow. */
+.clock-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 12px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.clock-title {
+  font-weight: 700;
+}
+
+.clock-position {
+  font-variant-numeric: tabular-nums;
 }
 
 .clock-row {
@@ -874,6 +1140,11 @@ main {
   font-size: 1.125rem;
 }
 
+#clock-range {
+  flex: 1 1 120px;
+  min-width: 100px;
+}
+
 #clock-speed {
   flex: 0 0 72px;
 }
@@ -886,6 +1157,76 @@ main {
 #clock-play[aria-pressed="true"] {
   color: var(--role1);
   border-color: var(--role1);
+}
+
+/* ---- help dialog ---- */
+
+/* Drafting look like the cards: surface, a 1px rule, no shadow. The backdrop is the
+ * page background at 70%. The inner box carries the padding so that a click on the
+ * dialog element itself means a click on the backdrop (app.js closes it then). */
+.help-dialog {
+  width: calc(100% - 32px);
+  max-width: 640px;
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--fg);
+  overflow: auto;
+}
+
+.help-dialog::backdrop {
+  background: var(--bg);
+  opacity: 0.7;
+}
+
+.help-inner {
+  padding: 12px 16px 16px;
+}
+
+.help-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.help-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.help-body h3 {
+  margin: 1rem 0 0.25rem;
+  font-size: 1rem;
+}
+
+.help-body p, .help-body li {
+  margin: 0.25rem 0;
+}
+
+.help-body ul {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.help-keys {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0.25rem 0 0;
+}
+
+.help-keys dd {
+  margin: 0;
+}
+
+kbd {
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 14px;
 }
 
 /* ---- motion (the OS setting is the only switch) ---- */
@@ -979,9 +1320,17 @@ main {
     max-width: calc(32 * var(--bit-cell) + 9ch + 53px);
   }
 
+  /* One row: heading and position, then the slider and speed, then the five buttons
+   * and the step size. The slider keeps at least 120px; the heading cell shrinks
+   * first and wraps its position text under the heading. */
   .clock-inner {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(120px, 1fr) auto;
     align-items: center;
+    column-gap: 12px;
+  }
+
+  .clock-head {
+    max-width: 280px;
   }
 
   .clock-row > button {
@@ -990,6 +1339,38 @@ main {
 
   #granularity {
     flex: 0 0 auto;
+  }
+
+  .insert {
+    padding: 8px 0 8px 8px;
+    border-block: 0;
+    border-inline-start: 2px solid var(--role1);
+  }
+
+  /* The round table in nine columns: the index and a to h, with the heading row. */
+  .rt-head {
+    display: grid;
+    grid-template-columns: 3ch repeat(8, minmax(8ch, 1fr));
+    gap: 2px 8px;
+    padding: 0 5px 2px;
+    color: var(--muted);
+    font: 14px/1.5 var(--mono);
+  }
+
+  .rt-row {
+    grid-template-columns: 3ch repeat(8, minmax(8ch, 1fr));
+  }
+
+  .rt-key {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
   }
 }
 
@@ -1028,5 +1409,10 @@ main {
   .digest-groups {
     grid-template-columns: repeat(8, max-content);
     font-size: 1.375rem;
+  }
+
+  /* Binary: two words of 32 digits (in four octets) per row, four rows. */
+  .digest-groups[data-radix="bin"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
