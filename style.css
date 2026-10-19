@@ -587,6 +587,15 @@ main {
 .board {
   padding: 8px 0 0;
   border-block-start: 1px solid var(--line);
+  /* Panels outside the window skip layout and paint; the browser keeps their last
+   * measured height so the page does not jump. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
+/* While the keys are moving the computation section shows the previous input. */
+.is-stale .board-body {
+  opacity: 0.5;
 }
 
 .board > h3:first-child {

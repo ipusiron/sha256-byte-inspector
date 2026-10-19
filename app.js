@@ -60,6 +60,8 @@
   const FOLLOW_PAUSE = 1000;
   /* Window after the page's own scroll during which scroll events are not the user's. */
   const OWN_SCROLL_WINDOW = 120;
+  /* Milliseconds of quiet typing before the computation section is redrawn. */
+  const COMPUTE_DELAY = 300;
   const PLAY_GLYPH = '\u25b6';
   const PAUSE_GLYPH = '\u2016';
   /* Keyboard help: the key names (shown in <kbd>), the dictionary key, the separator. */
@@ -107,6 +109,10 @@
   let playTimer = 0;
   let userScrollAt = -Infinity;
   let ownScrollUntil = 0;
+  /* Typing updates the input, bytes and output at once; the computation section waits
+   * until the keys have been still for COMPUTE_DELAY ms (see updateCompute). */
+  let deferCompute = false;
+  let computeTimer = 0;
 
   /* ---- wording and small helpers ---- */
 
@@ -343,7 +349,14 @@
       if (status === 'ng') state.error = 'match';
       else if (state.error === 'match') state.error = null;
       renderError();
-      renderPosition(false);
+      /* While typing the computation section is waiting for the keys to be still; the
+       * answer only touches it when Web Crypto disagrees (the boards are then hidden). */
+      if (computeTimer && status !== 'ng') {
+        renderRail();
+        renderClock();
+      } else {
+        renderPosition(false);
+      }
       renderResult();
       renderDropped();
     };
@@ -835,8 +848,11 @@
         if (more) className += ' ' + more;
       }
       const cell = cells[i];
-      cell.textContent = bit === 1 ? '1' : '0';
-      cell.className = className;
+      const digit = bit === 1 ? '1' : '0';
+      /* Only changed cells are written: an unchanged write still invalidates style
+       * and layout, and the section holds some three thousand cells. */
+      if (cell.firstChild === null || cell.firstChild.data !== digit) cell.textContent = digit;
+      if (cell.className !== className) cell.className = className;
     }
   }
 
@@ -1466,6 +1482,25 @@
    * the panels first when the block, the block count, the language or the radix changed
    * and refilling them when only the result changed. */
   function updateCompute(reveal) {
+    const section = $('compute');
+    if (deferCompute && computeView && boardsVisible()) {
+      /* While typing, keep the section as it was (marked stale) and redraw once the
+       * keys are still; the output above is already up to date. */
+      deferCompute = false;
+      section.classList.add('is-stale');
+      window.clearTimeout(computeTimer);
+      computeTimer = window.setTimeout(() => {
+        computeTimer = 0;
+        updateCompute(false);
+      }, COMPUTE_DELAY);
+      return;
+    }
+    deferCompute = false;
+    if (computeTimer) {
+      window.clearTimeout(computeTimer);
+      computeTimer = 0;
+    }
+    section.classList.remove('is-stale');
     if (!boardsVisible()) {
       clearCompute();
       return;
@@ -1745,12 +1780,14 @@
       if (event && event.isComposing) return;
       state.text = textInput.value;
       userEdited();
+      deferCompute = true;
       recompute();
     };
     const onHex = event => {
       if (event && event.isComposing) return;
       state.hexText = hexInput.value;
       userEdited();
+      deferCompute = true;
       recompute();
     };
     textInput.addEventListener('input', onText);
