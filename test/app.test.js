@@ -84,7 +84,8 @@ test('No tabs, panels or motion setting: the page is one column and reduced moti
   assert.doesNotMatch(app, /state\.motion|motion-toggle|data-motion|dataset\.motion|settings\.motion/);
   assert.doesNotMatch(app, /dock|--dock-offset|dock-offset|free-main|free-columns|sticky/i);
   assert.doesNotMatch(app, /prefers-reduced-motion/, 'style.css handles the OS setting');
-  assert.match(app, /prefers-color-scheme: light/);
+  assert.doesNotMatch(app, /prefers-color-scheme/, 'the page opens in the blueprint (dark) theme whatever the OS setting is');
+  assert.match(app, /theme === 'light' \|\| theme === 'dark' \? theme : 'dark'/, 'without a saved choice the theme is dark');
   assert.match(app, /JSON\.stringify\(\{ theme: state\.theme \}\)/, 'the display setting holds the theme only');
   assert.doesNotMatch(app, /\bt\(\s*'(?:tab|guide|learn|settings|dock)\./);
 });

@@ -53,7 +53,7 @@ The tool is a single page read from top to bottom in five sections.
 | 4. SHA-256 computation | The message block (512 bits), the schedule W[0] to W[63], the working variables a to h with a table of all 64 rounds, the final addition and the digest, all shown at once. The clock at the bottom of the screen highlights the current row and the rows it reads |
 | 5. Output (SHA-256) | The 64 digits, the Web Crypto check, the radix (hex, binary, decimal), five copy buttons and a comparison with an expected hash |
 
-Japanese and English, dark and light. The round buttons at the top right switch them; changing the language keeps the input and the position of the computation.
+Japanese and English, dark and light. The page first opens in the dark (blueprint) theme. The round buttons at the top right switch them; changing the language keeps the input and the position of the computation.
 
 ## 📖 Usage
 

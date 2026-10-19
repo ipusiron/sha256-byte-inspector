@@ -187,8 +187,8 @@
     return typeof navigator.language === 'string' && navigator.language.startsWith('ja') ? 'ja' : 'en';
   }
 
-  /* The saved display settings hold the theme only; without one the OS setting
-   * decides. Reduced motion is not stored: style.css follows the OS setting. */
+  /* The saved display settings hold the theme only; without one the page opens in
+   * the blueprint (dark) theme whatever the OS setting is. Reduced motion is not stored: style.css follows the OS setting. */
   function loadDisplay() {
     let saved = null;
     const raw = readStorage(DISPLAY_KEY);
@@ -200,7 +200,7 @@
       }
     }
     const theme = saved && typeof saved === 'object' ? saved.theme : null;
-    state.theme = theme === 'light' || theme === 'dark' ? theme : (matches('(prefers-color-scheme: light)') ? 'light' : 'dark');
+    state.theme = theme === 'light' || theme === 'dark' ? theme : 'dark';
   }
 
   /* aria-label from data-i18n-label; an icon-only button gets the same text as its title. */

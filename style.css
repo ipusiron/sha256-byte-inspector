@@ -1,7 +1,7 @@
 /* SHA-256 Byte Inspector - MIT (c) 2026 ipusiron
  * Drafting-table look: thin single-color lines, monospace numbers, no fills except
  * bit 1 (foreground) and differences (--diff). Dark (blueprint) is the default;
- * app.js sets data-theme on <html> from the saved choice or prefers-color-scheme.
+ * app.js sets data-theme on <html> from the saved choice, or dark when none is saved.
  * Layout: one page, one column at every width. The main element stacks five
  * numbered cards read top-down (input, input settings, bytes after UTF-8 encoding,
  * the SHA-256 computation, output); from 1280px the column, the header and the

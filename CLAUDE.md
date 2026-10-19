@@ -170,7 +170,7 @@ DOMは`createElement`と`textContent`で組み立てます。CSPは`connect-src 
 
 ### 配色トークンと明暗
 
-`:root`はダーク（青焼き）、`:root[data-theme="light"]`はライト（紙）です。起動時に`app.js`が保存済みの選択、なければ`prefers-color-scheme`から`data-theme`を決めます。contrast.test.jsは両方の`:root`ブロックを読み、組ごとに比を数値で検査します。
+`:root`はダーク（青焼き）、`:root[data-theme="light"]`はライト（紙）です。起動時に`app.js`が保存済みの選択から`data-theme`を決め、保存がなければOSの設定（`prefers-color-scheme`）にかかわらずダーク（青焼き）で開きます。contrast.test.jsは両方の`:root`ブロックを読み、組ごとに比を数値で検査します。
 
 | トークン | ダーク | ライト | 用途 |
 |---|---|---|---|
