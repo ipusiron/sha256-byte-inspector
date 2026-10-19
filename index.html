@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; connect-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>SHA-256 Byte Inspector</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script src="sha256-core.js" defer></script>
+  <script src="input-core.js" defer></script>
+  <script src="presets.js" defer></script>
+  <script src="trace-view.js" defer></script>
+  <script src="messages.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="page-header">
+    <h1 data-i18n="title"></h1>
+    <p data-i18n="description"></p>
+    <div class="header-controls">
+      <button id="lang-toggle" type="button" data-i18n="language"></button>
+      <label class="inline-field"><span data-i18n="settings.theme"></span><select id="theme-select"><option value="dark" data-i18n="settings.theme.dark"></option><option value="light" data-i18n="settings.theme.light"></option></select></label>
+    </div>
+  </header>
+  <noscript><p lang="ja">JavaScriptを有効にしてご利用ください。</p><p lang="en">Enable JavaScript to use this tool.</p></noscript>
+  <main>
+    <nav class="entries" role="tablist" data-i18n-label="tabs">
+      <button id="tab-guide" type="button" role="tab" aria-selected="true" aria-controls="panel-guide" tabindex="0" data-i18n="tab.guide"></button>
+      <button id="tab-free" type="button" role="tab" aria-selected="false" aria-controls="panel-free" tabindex="-1" data-i18n="tab.free"></button>
+      <button id="tab-learn" type="button" role="tab" aria-selected="false" aria-controls="panel-learn" tabindex="-1" data-i18n="tab.learn"></button>
+      <button id="tab-settings" type="button" role="tab" aria-selected="false" aria-controls="panel-settings" tabindex="-1" data-i18n="tab.settings"></button>
+    </nav>
+    <p id="announcement" role="status" aria-live="polite"></p>
+    <p id="error" role="alert" class="warning"></p>
+    <section id="panel-guide" role="tabpanel" aria-labelledby="tab-guide">
+      <h2 data-i18n="tab.guide"></h2>
+      <p data-i18n="guide.placeholder"></p>
+    </section>
+    <section id="panel-free" role="tabpanel" aria-labelledby="tab-free" hidden>
+      <h2 data-i18n="tab.free"></h2>
+      <section class="card input-card" aria-labelledby="input-title">
+        <h3 id="input-title" data-i18n="input.title"></h3>
+        <fieldset id="input-mode" class="mode-switch">
+          <legend data-i18n="input.mode"></legend>
+          <label class="choice"><input type="radio" name="input-mode" id="input-mode-text" value="text" checked><span data-i18n="input.mode.text"></span></label>
+          <label class="choice"><input type="radio" name="input-mode" id="input-mode-hex" value="hex"><span data-i18n="input.mode.hex"></span></label>
+        </fieldset>
+        <div id="text-field" class="field">
+          <label for="text-input" data-i18n="input.text.label"></label>
+          <textarea id="text-input" rows="4" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+          <p class="muted" data-i18n="input.encoding"></p>
+          <p class="muted" data-i18n="input.text.help"></p>
+        </div>
+        <div id="hex-field" class="field" hidden>
+          <label for="hex-input" data-i18n="input.hex.label"></label>
+          <textarea id="hex-input" rows="4" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+          <p class="muted" data-i18n="input.hex.help"></p>
+        </div>
+        <div class="options-row">
+          <label class="inline-field"><span data-i18n="input.newline"></span><select id="newline-select"><option value="lf" data-i18n="input.newline.lf"></option><option value="crlf" data-i18n="input.newline.crlf"></option></select></label>
+          <label class="choice"><input type="checkbox" id="trailing-newline"><span data-i18n="input.trailing"></span></label>
+          <label class="choice"><input type="checkbox" id="bom-check"><span data-i18n="input.bom"></span></label>
+        </div>
+        <div class="options-row">
+          <label class="inline-field"><span data-i18n="input.preset"></span><select id="preset-select"><option value="" data-i18n="input.preset.none"></option></select></label>
+        </div>
+        <p class="muted" data-i18n="input.limit"></p>
+        <p id="input-error" role="alert" class="warning"></p>
+        <div id="input-stats" class="stats" data-i18n-label="stats.title"></div>
+        <h4 data-i18n="byte.title"></h4>
+        <div id="byte-grid" class="byte-grid"></div>
+        <ul id="byte-legend" class="byte-legend" data-i18n-label="byte.legend"></ul>
+      </section>
+      <nav id="stage-rail" class="stage-rail" data-i18n-label="rail.title">
+        <button type="button" data-phase="input" data-i18n="rail.input"></button>
+        <button type="button" data-phase="pad" data-i18n="rail.pad"></button>
+        <button type="button" data-phase="split" data-i18n="rail.split"></button>
+        <button type="button" data-phase="schedule" data-i18n="rail.schedule"></button>
+        <button type="button" data-phase="round" data-i18n="rail.round"></button>
+        <button type="button" data-phase="final" data-i18n="rail.final"></button>
+        <button type="button" data-phase="digest" data-i18n="rail.digest"></button>
+      </nav>
+      <p class="position-line"><span id="position-block"></span><span id="position-index"></span></p>
+      <div class="free-layout">
+        <section id="stage" class="stage" aria-labelledby="stage-title">
+          <h3 id="stage-title" class="sr-only" data-i18n="stage.title"></h3>
+          <section id="board-pad" class="board" aria-labelledby="board-pad-title"><h3 id="board-pad-title" data-i18n="board.pad.title"></h3><div class="board-body"></div></section>
+          <section id="board-split" class="board" aria-labelledby="board-split-title" hidden><h3 id="board-split-title" data-i18n="board.split.title"></h3><div class="board-body"></div></section>
+          <section id="board-schedule" class="board" aria-labelledby="board-schedule-title" hidden><h3 id="board-schedule-title"></h3><div class="board-body"></div></section>
+          <section id="board-round" class="board" aria-labelledby="board-round-title" hidden><h3 id="board-round-title"></h3><div class="board-body"></div></section>
+          <section id="board-final" class="board" aria-labelledby="board-final-title" hidden><h3 id="board-final-title" data-i18n="board.final.title"></h3><div class="board-body"></div></section>
+          <section id="board-digest" class="board" aria-labelledby="board-digest-title" hidden><h3 id="board-digest-title" data-i18n="board.digest.title"></h3><div class="board-body"></div></section>
+        </section>
+        <aside id="dock" class="dock" aria-labelledby="dock-title">
+          <h3 id="dock-title" data-i18n="dock.title"></h3>
+          <p id="match-badge" class="match-badge" role="status"></p>
+          <h4 data-i18n="dock.digest"></h4>
+          <div id="digest-groups" class="digest-groups"></div>
+          <label class="inline-field"><span data-i18n="dock.radix"></span><select id="radix-select"><option value="hex" data-i18n="dock.radix.hex"></option><option value="bin" data-i18n="dock.radix.bin"></option><option value="dec" data-i18n="dock.radix.dec"></option></select></label>
+          <p id="dropped-stats" class="dropped-stats"></p>
+          <h4 data-i18n="dock.copy"></h4>
+          <div class="actions dock-actions">
+            <button id="copy-hash" type="button" data-i18n="copy.hash"></button>
+            <button id="copy-bytes-spaced" type="button" data-i18n="copy.bytesSpaced"></button>
+            <button id="copy-bytes-joined" type="button" data-i18n="copy.bytesJoined"></button>
+            <button id="copy-sha256sum" type="button" data-i18n="copy.sha256sum"></button>
+            <button id="copy-worksheet" type="button" data-i18n="copy.worksheet"></button>
+          </div>
+          <div class="field">
+            <label for="compare-input" data-i18n="compare.label"></label>
+            <textarea id="compare-input" rows="2" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+          </div>
+          <p id="compare-result" class="compare-result" role="status"></p>
+        </aside>
+      </div>
+      <div id="clock" class="clock" role="group" data-i18n-label="clock.title">
+        <div class="clock-inner">
+          <div class="clock-row">
+            <label for="clock-range" class="sr-only" data-i18n="clock.range"></label>
+            <input id="clock-range" type="range" min="0" max="115" step="1" value="0" aria-valuetext="">
+            <label for="clock-speed" class="sr-only" data-i18n="clock.speed"></label>
+            <select id="clock-speed"><option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="4">4x</option><option value="8">8x</option></select>
+          </div>
+          <div class="clock-row">
+            <button id="clock-first" type="button" data-i18n-label="clock.first">&#8676;</button>
+            <button id="clock-prev" type="button" data-i18n-label="clock.prev">&#8592;</button>
+            <button id="clock-play" type="button" data-i18n-label="clock.play" aria-pressed="false">&#9654;</button>
+            <button id="clock-next" type="button" data-i18n-label="clock.next">&#8594;</button>
+            <button id="clock-last" type="button" data-i18n-label="clock.last">&#8677;</button>
+            <label for="granularity" class="sr-only" data-i18n="clock.granularity"></label>
+            <select id="granularity"><option value="step" data-i18n="clock.granularity.step"></option><option value="eight" data-i18n="clock.granularity.eight"></option><option value="phase" data-i18n="clock.granularity.phase"></option><option value="block" data-i18n="clock.granularity.block"></option></select>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="panel-learn" role="tabpanel" aria-labelledby="tab-learn" hidden>
+      <h2 data-i18n="tab.learn"></h2>
+      <p data-i18n="learn.placeholder"></p>
+      <ol class="learn-sections">
+        <li data-i18n="learn.section.1"></li>
+        <li data-i18n="learn.section.2"></li>
+        <li data-i18n="learn.section.3"></li>
+        <li data-i18n="learn.section.4"></li>
+        <li data-i18n="learn.section.5"></li>
+        <li data-i18n="learn.section.6"></li>
+        <li data-i18n="learn.section.7"></li>
+        <li data-i18n="learn.section.8"></li>
+        <li data-i18n="learn.section.9"></li>
+        <li data-i18n="learn.section.10"></li>
+        <li data-i18n="learn.section.11"></li>
+        <li data-i18n="learn.section.12"></li>
+      </ol>
+    </section>
+    <section id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+      <h2 data-i18n="settings.title"></h2>
+      <label class="choice"><input type="checkbox" id="motion-toggle"><span data-i18n="settings.motion"></span></label>
+      <p class="muted" data-i18n="settings.motion.note"></p>
+      <p class="muted" data-i18n="settings.themeNote"></p>
+    </section>
+  </main>
+  <footer><p data-i18n="privacy"></p><p data-i18n="author"></p><a href="https://github.com/ipusiron/sha256-byte-inspector" target="_blank" rel="noopener noreferrer" data-i18n="repository"></a></footer>
+</body>
+</html>

@@ -131,23 +131,25 @@ DOMは`createElement`と`textContent`で組み立てます。CSPは`connect-src 
 - `copyFormats(result)`→`{hex64, bytesSpaced, bytesJoined, sha256sum}`。すべて状態の値から作り、DOMの文字は使わない
 - `compareDigest(text, digestHex)`→`{found: string[]（64桁の候補）, match: boolean | null, normalized}`。貼られた文字列から64桁の16進をすべて抜き出し、小文字化して比べる。候補が2つ以上なら`match`は`null`で画面が選ばせる
 - `diffModel(traceA, traceB, position)`（段階1c）
+- 定数`REGISTERS`（a〜h）・`PHASES`。各モデルには上の欄に加えて補助の欄がある＝`word`の`value`（数値）、和の`rawHex`（9桁。先頭1桁が`dropped`）、`byteGrid`の`charStart`・`plainStart`・`perRow`・`total`、`paddingModel`の`count`・`elided`・`bitLenHex`・`paddedBytes`・`boundary.remainder`・`boundary.spill`、`positionModel`の`blockNumber`（1始まり。digestは`null`）・`blocks`、`droppedStats`の`t2`・`e`・`a`・`blocks`（第2引数に計算済みのトレースの配列を渡せる）。`droppedStats`の`count`は「`dropped`が1以上の和の数」で、1つの和を1回と数える（"abc"のT1は62/64）。`compareDigest`は連続64桁のほかに旧certutilの「2桁×32を空白区切り」も候補にする。`worksheet`は英語固定で`{lang}`は無視する
 
 ### 画面（index.html）の約束
 
 - 入口＝`nav.entries`に`tab-guide`・`tab-free`・`tab-learn`・`tab-settings`（`role="tab"`、`aria-controls="panel-…"`）。最初に開くのは`guide`。段階1a-βでは`guide`と`learn`は見出しと短い案内だけ
 - 入力カード（`panel-free`の先頭）＝モードの切り替え`input-mode`（`text`／`hex`のラジオ）、`text-input`と`hex-input`（どちらもtextarea）、`newline-select`（lf／crlf）、`trailing-newline`、`bom-check`、`preset-select`（落とし穴の実験とDay117の再現例）、`input-stats`（3つの数と改行・BOM・正規化の札）、`input-error`（`role="alert"`）、`byte-grid`と`byte-legend`
 - 段階レール`stage-rail`＝7つのボタン（`data-phase`）。現在位置に`aria-current="step"`。`position-block`（ブロック番号）・`position-index`（スケジュールのtかラウンドのt）
-- ステージ`stage`＝`board-pad`・`board-split`・`board-schedule`・`board-round`・`board-final`・`board-digest`。表示中の盤面以外は`hidden`
+- ステージ`stage`＝`board-pad`・`board-split`・`board-schedule`・`board-round`・`board-final`・`board-digest`（各盤面は`section.board > h3#board-X-title + div.board-body`）。表示中の盤面以外は`hidden`。`board-schedule-title`と`board-round-title`は`{t}`を差し込むので`data-i18n`を付けず、`app.js`が書く
+- `app.js`が組む動的なDOMのクラス名は`style.css`が定める＝バイト格子`.byte-row > .byte-offset + .byte-cells > .byte-cell[data-cls]`（上限超は`pre.byte-plain`）、帯`.lane > .lane-head(.lane-label + .tile) + .bits > .bit(.is-one|.is-diff|.is-current|.is-source|.is-result)`、札`.tiles > .tile`、和`.sum > .sum-row(.is-result)`、一致バッジ`#match-badge[data-state="ok|ng|unknown"]`
 - 計器ドック`dock`＝`match-badge`（`role="status"`）、`digest-groups`、`radix-select`（hex／bin／dec）、`dropped-stats`、コピーのボタン（`copy-hash`・`copy-bytes-spaced`・`copy-bytes-joined`・`copy-sha256sum`・`copy-worksheet`）、`compare-input`と`compare-result`
-- 時計`clock`（画面下に固定）＝`clock-first`・`clock-prev`・`clock-play`・`clock-next`・`clock-last`、`clock-range`（`input type="range"`、`aria-valuetext`）、粒度`granularity`（1歩／8歩／1段／1ブロック）、`clock-speed`。段階1a-βでは送りと範囲だけ動き、自動再生と動きは段階1b
-- 設定`panel-settings`＝`lang-toggle`は見出し右、`theme-select`（dark／light）、`motion-toggle`（動きを抑える）、理解チェックの保存は段階1c
+- 時計`clock`（画面下に固定。`panel-free`の末尾に置き、他の入口では表示されない。767px以下ではtextareaのフォーカス中に隠す）＝`clock-first`・`clock-prev`・`clock-play`・`clock-next`・`clock-last`、`clock-range`（`input type="range"`、`aria-valuetext`）、粒度`granularity`（1歩／8歩／1段／1ブロック）、`clock-speed`。段階1a-βでは送りと範囲だけ動き、自動再生と動きは段階1b
+- 見出し右に`lang-toggle`と`theme-select`（dark／light）を置く（仕様の「入力カード上部に明暗・JA/EN」）。設定`panel-settings`＝`motion-toggle`（動きを抑える。`app.js`が`:root[data-motion="reduce"]`を立てる）と明暗の注記、理解チェックの保存は段階1c
 - `aria-live`の要約は`announcement`（手動の歩と停止時だけ更新）、エラーは`error`（`role="alert"`）
 - 外部リンクは`<a target="_blank" rel="noopener noreferrer">`で、許可リストをテストで固定する
 
 ### 辞書（messages.js）の約束
 
 - `ja`と`en`のキーは同じ集合。`{name}`の差し込みも同じ。JavaScriptに日本語を書かず、画面の文言は辞書から`t(key, values)`で引く
-- キーの名前空間＝`title`・`description`・`language`・`tabs`・`tab.*`・`input.*`・`stats.*`・`cls.*`（文字の分類名）・`error.*`・`preset.*`・`rail.*`・`phase.*`・`board.*`・`dock.*`・`copy.*`・`compare.*`・`clock.*`・`settings.*`・`privacy`・`author`・`repository`・`noscript.ja`・`noscript.en`
+- キーの名前空間＝`title`・`description`・`language`・`tabs`・`tab.*`・`guide.*`・`learn.*`・`input.*`・`stats.*`・`byte.*`・`cls.*`（文字の分類名。`SHA256ByteInput.CLASSES`と同じ15個）・`warning.*`・`error.*`・`preset.*`・`rail.*`・`stage.*`・`phase.*`（`positionModel.labelKey`が引く6個）・`board.*`・`dock.*`・`copy.*`・`compare.*`・`clock.*`・`settings.*`・`privacy`・`author`・`repository`・`noscript.ja`・`noscript.en`・`busy`・`ready`。`test/i18n.test.js`がこの一覧を検査する
 - 日本語の文言で使わない語は`test/i18n.test.js`の正規表現に定める（閉じた漢字で書く副詞、長音を省いたカタカナ、直訳調の動詞、前置きの決まり文句、「か所」の表記など。Day117の`test/i18n.test.js`と同じ一覧）。カタカナの長音は省かない（サーバー・ユーザー・ブラウザー・フォルダー・パラメーター・エディター・マネージャー・リポジトリー）。和文と英数字の間に空白を入れない。行末に「：」を置かない
 - 改ざんを防ぐ・改ざん防止・改ざんの証明・検証ツール・原像を求める・復号・解読を機能の説明に使わない
 
@@ -170,6 +172,7 @@ DOMは`createElement`と`textContent`で組み立てます。CSPは`connect-src 
 | `--diff` | `#ff6fb5` | `#b5246d` | 差分の塗り |
 | `--warn` | `#f2b84b` | `#8a5200` | 警告の文字（役2と同じ値） |
 | `--focus` | `#ffffff` | `#000000` | フォーカスの輪郭 2px＋2px |
+| `--border` | `#7d8b9a` | `#5c6773` | 操作要素の縁（`--bit0`と同じ値。背景と3:1以上） |
 
 役色は塗りに使いません（縁・下線・文字だけ）。差分だけ塗り、塗りの上の文字は`--bg`です。等幅は`ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace`、`font-variant-numeric: tabular-nums slashed-zero`。セルの幅はpxで固定し、文字の下限はセル内14px・本文16px。添字は使いません。
 

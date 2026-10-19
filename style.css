@@ -1,0 +1,938 @@
+/* SHA-256 Byte Inspector - MIT (c) 2026 ipusiron
+ * Drafting-table look: thin single-color lines, monospace numbers, no fills except
+ * bit 1 (foreground) and differences (--diff). Dark (blueprint) is the default;
+ * app.js sets data-theme on <html> from the saved choice or prefers-color-scheme.
+ * Layout: one column up to 767px, a 64px vertical entrance rail plus one column
+ * from 768px, stage plus 280px instrument dock from 1280px. */
+
+:root {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --surface: #161d27;
+  --fg: #e8eef4;
+  --muted: #a7b4c2;
+  --line: #2b3a4a;
+  --bit0: #7d8b9a;
+  --border: #7d8b9a;
+  --role1: #56c8ff;
+  --role2: #f2b84b;
+  --role3: #c9a3ff;
+  --role4: #6fd48a;
+  --diff: #ff6fb5;
+  --warn: #f2b84b;
+  --focus: #ffffff;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  --bit-cell: 16px;
+  --bit-gap: 1px;
+  --byte-cell: 32px;
+  --byte-gap: 2px;
+  --clock-height: 128px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f5f0;
+  --surface: #eeede6;
+  --fg: #1b2129;
+  --muted: #505a66;
+  --line: #c9cfd6;
+  --bit0: #5c6773;
+  --border: #5c6773;
+  --role1: #0a6c9a;
+  --role2: #8a5200;
+  --role3: #5f3bbf;
+  --role4: #1f7a3a;
+  --diff: #b5246d;
+  --warn: #8a5200;
+  --focus: #000000;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0 auto;
+  max-width: 1320px;
+  min-height: 100dvh;
+  padding: 16px 16px var(--clock-height);
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.6 system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow-wrap: anywhere;
+}
+
+h1 {
+  margin: 0.5rem 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1.25rem;
+}
+
+h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+h4 {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 1rem;
+}
+
+p {
+  margin: 0.5rem 0;
+}
+
+code, pre, textarea, .mono, .byte-cell, .byte-offset, .byte-plain, .bit, .tile, .lane-label, .digest-groups, .sum, .stats .value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+code, pre {
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---- header, entrances, footer ---- */
+
+.page-header, footer {
+  text-align: center;
+  padding-block: 0.5rem;
+}
+
+.page-header {
+  border-block-end: 1px solid var(--line);
+}
+
+footer {
+  margin-block-start: 2rem;
+  border-block-start: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.header-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 16px;
+  margin-block: 0.5rem;
+}
+
+.entries {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-block: 1rem;
+  padding-block: 0.5rem;
+  border-block-end: 1px solid var(--line);
+}
+
+.entries button {
+  border-radius: 0;
+  padding-inline: 1rem;
+}
+
+[role="tab"][aria-selected="true"] {
+  color: var(--role1);
+  border-color: var(--role1);
+  border-block-end-width: 3px;
+  font-weight: 700;
+}
+
+/* ---- controls (44px targets) ---- */
+
+button, input, select, textarea, summary, a {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+button {
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  max-width: 100%;
+  background: var(--surface);
+}
+
+button:disabled {
+  cursor: default;
+  color: var(--muted);
+}
+
+select {
+  padding: 0.3rem 0.5rem;
+  max-width: 100%;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 88px;
+  padding: 0.5rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+input[type="checkbox"], input[type="radio"] {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  flex: 0 0 44px;
+  accent-color: var(--role1);
+}
+
+input[type="range"] {
+  flex: 1 1 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--role1);
+}
+
+a {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem;
+  color: var(--role1);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+label {
+  font-weight: 600;
+}
+
+.field > label {
+  display: block;
+  margin-block-end: 4px;
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.inline-field {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  max-width: 100%;
+}
+
+.options-row, .actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-block: 0.5rem;
+}
+
+fieldset {
+  min-width: 0;
+  margin: 0.5rem 0;
+  padding: 0.25rem 0.75rem 0.5rem;
+  border: 1px solid var(--line);
+}
+
+legend {
+  max-width: 100%;
+  font-weight: 600;
+}
+
+.mode-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.warning {
+  padding: 0.5rem 0.75rem;
+  border-inline-start: 3px solid var(--warn);
+  color: var(--warn);
+}
+
+.warning:empty, [role="status"]:empty {
+  display: none;
+}
+
+/* Live region for screen readers only: the position is already shown on the stage. */
+#announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.multiline {
+  white-space: pre-line;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ---- cards, stats, byte grid ---- */
+
+.card {
+  padding: 8px 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.card > h3:first-child {
+  margin-block-start: 0;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-block: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.stats > * {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+}
+
+.stats dt, .stats dd {
+  margin: 0;
+}
+
+.stats .value, .stats strong {
+  color: var(--role1);
+  font-weight: 700;
+}
+
+.byte-grid {
+  display: grid;
+  gap: 4px;
+  margin-block: 0.5rem;
+}
+
+.byte-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 2px 8px;
+  min-width: 0;
+}
+
+.byte-offset {
+  flex: 0 0 auto;
+  min-width: 4ch;
+  padding-block: 9px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.byte-cells {
+  display: grid;
+  grid-template-columns: repeat(8, var(--byte-cell));
+  gap: var(--byte-gap);
+}
+
+.byte-cell {
+  display: grid;
+  place-items: center;
+  width: var(--byte-cell);
+  height: var(--byte-cell);
+  border: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.byte-plain {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Character classes: a role color on the border and text plus an underline, so the
+ * class is readable without color. Used by grid cells and legend swatches alike. */
+[data-cls]:not([data-cls="text"]) {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+[data-cls="lf"], [data-cls="cr"] {
+  color: var(--role1);
+  border-color: var(--role1);
+}
+
+[data-cls="tab"], [data-cls="space"], [data-cls="nbsp"], [data-cls="ideographic-space"] {
+  color: var(--role2);
+  border-color: var(--role2);
+  border-style: dashed;
+}
+
+[data-cls="zwsp"], [data-cls="zwj"], [data-cls="vs16"], [data-cls="format"] {
+  color: var(--role3);
+  border-color: var(--role3);
+  border-style: dotted;
+}
+
+[data-cls="bom"] {
+  color: var(--role4);
+  border-color: var(--role4);
+  border-style: double;
+}
+
+[data-cls="control"], [data-cls="replacement"], [data-cls="lone-surrogate"] {
+  color: var(--diff);
+  border-color: var(--diff);
+}
+
+.byte-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.byte-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-swatch {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line);
+  font: 14px/1 var(--mono);
+}
+
+/* ---- stage rail and position ---- */
+
+.stage-rail {
+  display: flex;
+  gap: 4px;
+  margin-block: 1rem 0.25rem;
+  padding: 4px 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.stage-rail button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.stage-rail [aria-current="step"] {
+  color: var(--role1);
+  border-color: var(--role1);
+  border-block-end-width: 3px;
+  font-weight: 700;
+}
+
+.position-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-block: 0.25rem 0.75rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.position-line:empty {
+  display: none;
+}
+
+/* ---- stage and boards ---- */
+
+.free-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.stage, .dock {
+  min-width: 0;
+}
+
+.board {
+  padding: 8px 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.board > h3:first-child {
+  margin-block-start: 0;
+}
+
+.board-body {
+  display: grid;
+  gap: 12px;
+}
+
+.board-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* 32-bit band: fixed pixel cells so the band length does not depend on the font.
+ * 16 cells per row below 768px (two rows per word), 32 cells from 768px. */
+.bits {
+  display: grid;
+  grid-template-columns: repeat(16, var(--bit-cell));
+  gap: var(--bit-gap);
+}
+
+.bit {
+  display: grid;
+  place-items: center;
+  width: var(--bit-cell);
+  height: var(--bit-cell);
+  border: 1px solid var(--bit0);
+  color: var(--bit0);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.bit.is-one, .bit[data-bit="1"] {
+  color: var(--bg);
+  background: var(--fg);
+  border-color: var(--fg);
+}
+
+.bit.is-diff {
+  color: var(--bg);
+  background: var(--diff);
+  border-color: var(--diff);
+}
+
+.bit.is-focus, .bit.is-current {
+  border-width: 2px;
+  border-color: var(--role1);
+}
+
+.bit.is-source { border-color: var(--role1); }
+.bit.is-from { border-color: var(--role2); }
+.bit.is-to { border-color: var(--role3); }
+.bit.is-result { border-color: var(--role4); }
+
+.lane {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.lane-label {
+  min-width: 3ch;
+  font-size: 14px;
+  color: var(--role1);
+}
+
+.lane.role2 .lane-label { color: var(--role2); }
+.lane.role3 .lane-label { color: var(--role3); }
+.lane.role4 .lane-label { color: var(--role4); }
+
+.lane .tile {
+  margin-inline-start: auto;
+}
+
+/* Word tiles: hex (default), binary or decimal text set by app.js. */
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tile {
+  display: inline-grid;
+  place-items: center;
+  min-width: 9ch;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.tile.is-current {
+  border-width: 2px;
+  border-color: var(--role1);
+}
+
+.tile.is-ref { border-color: var(--role2); }
+.tile.is-result { border-color: var(--role4); }
+.tile.is-diff {
+  color: var(--bg);
+  background: var(--diff);
+  border-color: var(--diff);
+}
+
+.tile-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* Stacked additions: raw sum, dropped carries, result mod 2^32. */
+.sum {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.sum-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 2px 0;
+  border-block-end: 1px solid var(--line);
+}
+
+.sum-row.is-result {
+  border-block-end: 2px solid var(--fg);
+  font-weight: 700;
+}
+
+.sum-dropped {
+  color: var(--role2);
+}
+
+.padding-segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.segment {
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  font: 14px/1.5 var(--mono);
+}
+
+.segment.is-message { border-color: var(--role1); }
+.segment.is-one { border-color: var(--role2); }
+.segment.is-zeros { border-color: var(--line); border-style: dotted; }
+.segment.is-length { border-color: var(--role3); }
+
+/* ---- instrument dock ---- */
+
+.dock {
+  padding: 8px 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.dock > h3:first-child {
+  margin-block-start: 0;
+}
+
+.dock-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.dock-actions button {
+  text-align: start;
+}
+
+.match-badge {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  font-weight: 700;
+}
+
+.match-badge.is-ok, .match-badge[data-state="ok"] {
+  color: var(--role4);
+  border-color: var(--role4);
+}
+
+.match-badge.is-ng, .match-badge[data-state="ng"] {
+  color: var(--diff);
+  border-color: var(--diff);
+}
+
+.match-badge.is-unknown, .match-badge[data-state="unknown"] {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.digest-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8ch, 1fr));
+  gap: 4px 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 1rem;
+}
+
+.digest-groups span {
+  white-space: nowrap;
+}
+
+.dropped-stats, .compare-result {
+  font-size: 0.875rem;
+}
+
+.compare-result.is-match { color: var(--role4); }
+.compare-result.is-mismatch { color: var(--diff); }
+
+/* ---- clock (fixed at the bottom; hidden while a textarea has focus) ---- */
+
+.clock {
+  position: fixed;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 10;
+  padding: 6px 16px;
+  border-block-start: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.clock.is-hidden {
+  display: none;
+}
+
+.clock-inner {
+  display: grid;
+  gap: 6px;
+  max-width: 1288px;
+  margin: 0 auto;
+}
+
+.clock-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.clock-row > button {
+  flex: 0 0 44px;
+  padding: 0;
+  font-size: 1.125rem;
+}
+
+#clock-speed {
+  flex: 0 0 72px;
+}
+
+#granularity {
+  flex: 1 1 44px;
+  min-width: 44px;
+}
+
+#clock-play[aria-pressed="true"] {
+  color: var(--role1);
+  border-color: var(--role1);
+}
+
+/* ---- learn list ---- */
+
+.learn-sections {
+  padding-inline-start: 1.5rem;
+}
+
+.learn-sections li {
+  margin-block: 0.5rem;
+}
+
+/* ---- motion ---- */
+
+.bit, .tile, .lane {
+  transition: transform 300ms, opacity 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root[data-motion="reduce"] *, :root[data-motion="reduce"] *::before, :root[data-motion="reduce"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* ---- wider screens ---- */
+
+@media (min-width: 390px) {
+  :root {
+    --bit-cell: 18px;
+  }
+
+  .card, .board, .dock {
+    padding: 12px;
+  }
+}
+
+@media (min-width: 640px) {
+  .byte-cells {
+    grid-template-columns: repeat(16, var(--byte-cell));
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --bit-cell: 19px;
+    --clock-height: 112px;
+  }
+
+  body {
+    padding-inline: 24px;
+  }
+
+  .bits {
+    grid-template-columns: repeat(32, var(--bit-cell));
+  }
+
+  .card, .board, .dock {
+    padding: 16px;
+  }
+
+  .clock-inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .clock-row > button {
+    font-size: 1.25rem;
+  }
+
+  #granularity {
+    flex: 0 0 auto;
+  }
+}
+
+/* The four entrances become a vertical rail on the left between 768px and 1279px. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  main {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    column-gap: 16px;
+    align-items: start;
+  }
+
+  .entries {
+    grid-column: 1;
+    grid-row: 1 / span 6;
+    position: sticky;
+    top: 16px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    writing-mode: vertical-rl;
+  }
+
+  .entries button {
+    padding: 1rem 0.35rem;
+    border-block-end-width: 1px;
+    border-inline-start-width: 1px;
+  }
+
+  .entries [role="tab"][aria-selected="true"] {
+    border-inline-start-width: 3px;
+  }
+
+  main > :not(.entries) {
+    grid-column: 2;
+  }
+}
+
+/* Between 768px and 800px the single-row band (32 cells of 19px plus 31 gaps = 639px) is
+ * wider than the board's content box (640px stage minus padding and border). Without the
+ * cell gap and with narrower side padding the band stays inside the board. */
+@media (min-width: 768px) and (max-width: 800px) {
+  :root {
+    --bit-gap: 0;
+  }
+
+  .board {
+    padding-inline: 8px;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --bit-cell: 20px;
+  }
+
+  .free-layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+
+  .dock {
+    position: sticky;
+    top: 16px;
+  }
+}
