@@ -3,10 +3,15 @@
  * SHA256ByteCore (hash and trace), SHA256ByteView (rendering models), SHA256BytePresets
  * and SHA256ByteMessages (wording). The state object is the single source of truth;
  * every render rebuilds elements with createElement and textContent and never writes
- * markup or inline styles. localStorage holds only the language and the display
- * settings; the URL fragment is read once at start-up and then cleared from the
- * address bar (the only write to the URL). Stage 1a-beta draws the still boards (the
- * reduced-motion view); band animation and autoplay arrive in stage 1b. */
+ * markup or inline styles; the only CSSOM write is the custom property --clock-height
+ * on <html>, the measured height of the fixed clock that the body's bottom padding
+ * reads. The page is one column read top-down in five sections: input, input
+ * settings, the bytes after UTF-8 encoding, the SHA-256 computation (rail, boards,
+ * overflow statistics) and the output (digest, radix, copy buttons, comparison).
+ * localStorage holds only the language and the theme; reduced motion follows the OS
+ * setting through CSS. The URL fragment is read once at start-up and then cleared
+ * from the address bar (the only write to the URL). Stage 1a-beta draws the still
+ * boards (the reduced-motion view); band animation and autoplay arrive in stage 1b. */
 (function () {
   'use strict';
 
@@ -17,11 +22,12 @@
   const messages = window.SHA256ByteMessages;
   const $ = id => document.getElementById(id);
 
-  const TABS = ['guide', 'free', 'learn', 'settings'];
   const BOARDS = ['pad', 'split', 'schedule', 'round', 'final', 'digest'];
   const RAIL = ['input', 'pad', 'split', 'schedule', 'round', 'final', 'digest'];
   const RADIXES = ['hex', 'bin', 'dec'];
   const GRANULARITIES = ['step', 'eight', 'phase', 'block'];
+  /* Copy buttons of the output section that need only a result; copy-worksheet also
+   * needs the round board to be the current one. */
   const COPY_IDS = ['copy-hash', 'copy-bytes-spaced', 'copy-bytes-joined', 'copy-sha256sum'];
   const LANG_KEY = 'sha256-byte-inspector.lang';
   const DISPLAY_KEY = 'sha256-byte-inspector.display';
@@ -36,6 +42,8 @@
   const ELLIPSIS = String.fromCharCode(0x2026);
   /* Milliseconds before the clock returns after a text area loses focus (see wireStage). */
   const CLOCK_RETURN_DELAY = 300;
+  /* Pixels added to the clock's measured height for --clock-height. */
+  const CLOCK_MARGIN = 8;
   const DEFAULT_OPTIONS = Object.freeze({ newline: 'lf', trailingNewline: false, bom: false });
   const encoder = new TextEncoder();
 
@@ -58,14 +66,13 @@
     busy: false,
     cryptoStatus: 'unknown',
     request: 0,
-    active: 'guide',
     granularity: 'step',
     theme: 'dark',
-    motion: false,
     error: null
   };
   let language = 'en';
   let day117Cache = null;
+  let layoutFrame = 0;
 
   /* ---- wording and small helpers ---- */
 
@@ -126,7 +133,7 @@
     }
   }
 
-  /* ---- language and display settings ---- */
+  /* ---- language and theme ---- */
 
   function pickLanguage(candidates) {
     const found = candidates.find(value => value === 'ja' || value === 'en');
@@ -134,6 +141,8 @@
     return typeof navigator.language === 'string' && navigator.language.startsWith('ja') ? 'ja' : 'en';
   }
 
+  /* The saved display settings hold the theme only; without one the OS setting
+   * decides. Reduced motion is not stored: style.css follows the OS setting. */
   function loadDisplay() {
     let saved = null;
     const raw = readStorage(DISPLAY_KEY);
@@ -145,21 +154,31 @@
       }
     }
     const theme = saved && typeof saved === 'object' ? saved.theme : null;
-    const motion = saved && typeof saved === 'object' ? saved.motion : null;
     state.theme = theme === 'light' || theme === 'dark' ? theme : (matches('(prefers-color-scheme: light)') ? 'light' : 'dark');
-    state.motion = typeof motion === 'boolean' ? motion : matches('(prefers-reduced-motion: reduce)');
+  }
+
+  /* aria-label from data-i18n-label; an icon-only button gets the same text as its title. */
+  function labelElement(element) {
+    const text = t(element.dataset.i18nLabel);
+    element.setAttribute('aria-label', text);
+    if (element.classList.contains('icon-button')) element.title = text;
   }
 
   function applyDisplay() {
     document.documentElement.dataset.theme = state.theme;
-    if (state.motion) document.documentElement.dataset.motion = 'reduce';
-    else delete document.documentElement.dataset.motion;
-    $('theme-select').value = state.theme;
-    $('motion-toggle').checked = state.motion;
+    /* While the page is dark the button shows the sun and offers light, and the
+     * other way round; the label names the state the click leads to. */
+    const toggle = $('theme-toggle');
+    const dark = state.theme === 'dark';
+    /* SVG elements have no `hidden` property, so the attribute is toggled directly. */
+    toggle.querySelector('.icon-sun').toggleAttribute('hidden', !dark);
+    toggle.querySelector('.icon-moon').toggleAttribute('hidden', dark);
+    toggle.dataset.i18nLabel = dark ? 'theme.toLight' : 'theme.toDark';
+    labelElement(toggle);
   }
 
   function saveDisplay() {
-    writeStorage(DISPLAY_KEY, JSON.stringify({ theme: state.theme, motion: state.motion }));
+    writeStorage(DISPLAY_KEY, JSON.stringify({ theme: state.theme }));
   }
 
   /* ---- presets ---- */
@@ -290,7 +309,8 @@
       else if (state.error === 'match') state.error = null;
       renderError();
       renderPosition();
-      renderDock();
+      renderResult();
+      renderDropped();
     };
     let promise;
     try {
@@ -418,6 +438,14 @@
     $('input-mode-hex').checked = hex;
     $('text-field').hidden = hex;
     $('hex-field').hidden = !hex;
+    $('text-notes').hidden = hex;
+    /* The heading of the bytes section names what the grid shows: the UTF-8 encoding
+     * of the text, or the hex bytes as given. The key is kept on the element so that
+     * localize() picks the same wording. */
+    const bytesTitle = $('bytes-title-text');
+    const bytesKey = hex ? 'section.bytesHex' : 'section.bytes';
+    bytesTitle.dataset.i18n = bytesKey;
+    bytesTitle.textContent = t(bytesKey);
     $('newline-select').value = state.options.newline;
     $('trailing-newline').checked = state.options.trailingNewline;
     $('bom-check').checked = state.options.bom;
@@ -432,7 +460,7 @@
   function errorText(code) {
     switch (code) {
       case 'match':
-        return t('dock.match.ng');
+        return t('result.match.ng');
       case 'fragment':
         return t('error.fragment');
       case 'fragmentLimit':
@@ -545,11 +573,27 @@
 
   /* ---- rendering: stage rail, clock ---- */
 
+  /* Brings the current step's button into the visible part of the rail when the rail
+   * scrolls horizontally (narrow screens). Only the rail's own scrollLeft moves, by the
+   * smallest amount: scrollIntoView would also scroll the page vertically whenever the
+   * rail is above or below the fold, for example while stepping with the clock and
+   * reading the round board. */
+  function revealRailButton(button) {
+    const rail = $('stage-rail');
+    if (rail.scrollWidth <= rail.clientWidth) return;
+    const outer = rail.getBoundingClientRect();
+    const inner = button.getBoundingClientRect();
+    if (inner.left < outer.left) rail.scrollLeft -= outer.left - inner.left + 4;
+    else if (inner.right > outer.right) rail.scrollLeft += inner.right - outer.right + 4;
+  }
+
   function renderRail() {
     const phase = state.result ? state.position.phase : null;
     for (const button of $('stage-rail').querySelectorAll('button')) {
-      if (button.dataset.phase === phase) button.setAttribute('aria-current', 'step');
-      else button.removeAttribute('aria-current');
+      if (button.dataset.phase === phase) {
+        button.setAttribute('aria-current', 'step');
+        revealRailButton(button);
+      } else button.removeAttribute('aria-current');
       button.disabled = button.dataset.phase !== 'input' && !state.result;
     }
     if (!state.result) {
@@ -872,27 +916,43 @@
     body.replaceChildren(...content);
   }
 
-  /* ---- rendering: instrument dock ---- */
+  /* ---- rendering: output section and overflow statistics ---- */
 
-  function renderDock() {
+  /* One output group per 32-bit word of the digest, in the radix of the boards: 8 hex
+   * digits, the 32 binary digits in four octets (a narrow band wraps between them),
+   * or the decimal value. */
+  function digestGroupText(w) {
+    if (state.radix === 'bin') return w.bin.replace(/([01]{8})(?=[01])/g, '$1 ');
+    return wordText(w);
+  }
+
+  /* The output section: match badge, the digest as 8 groups and the copy buttons. A
+   * hex error or a Web Crypto mismatch empties the digest and disables the buttons. */
+  function renderResult() {
     const badge = $('match-badge');
     const has = state.result !== null;
     badge.dataset.state = has ? state.cryptoStatus : 'unknown';
-    badge.textContent = has ? t('dock.match.' + state.cryptoStatus) : '';
+    badge.textContent = has ? t('result.match.' + state.cryptoStatus) : '';
     const groups = $('digest-groups');
     groups.replaceChildren();
-    $('dropped-stats').textContent = '';
+    groups.dataset.radix = state.radix;
     const ok = boardsVisible();
     for (const id of COPY_IDS) $(id).disabled = !ok;
     $('copy-worksheet').disabled = !(ok && state.position.phase === 'round');
-    if (ok) {
-      for (const group of view.digestModel(state.result).groups) groups.append(node('span', group));
-      const d = view.droppedStats(state.result, state.traces);
-      $('dropped-stats').textContent = t('dock.dropped', {
-        s: d.schedule.count, st: d.schedule.total, t: d.t1.count, tt: d.t1.total, f: d.final.count, ft: d.final.total, m: d.max
-      });
-    }
-    renderCompare();
+    if (ok) for (const w of view.digestModel(state.result).words) groups.append(node('span', digestGroupText(w)));
+    /* Zero bytes of input have a hash too; the note says so while the input is empty. */
+    $('result').querySelector('.result-note').hidden = !(ok && state.result.bytes.length === 0);
+  }
+
+  /* The overflow statistics at the end of the computation section. */
+  function renderDropped() {
+    const box = $('dropped-stats');
+    box.textContent = '';
+    if (!boardsVisible()) return;
+    const d = view.droppedStats(state.result, state.traces);
+    box.textContent = t('stage.dropped', {
+      s: d.schedule.count, st: d.schedule.total, t: d.t1.count, tt: d.t1.total, f: d.final.count, ft: d.final.total, m: d.max
+    });
   }
 
   function renderCompare() {
@@ -932,6 +992,8 @@
 
   /* ---- clipboard ---- */
 
+  /* The read-only field that holds the text when the clipboard cannot be written. It
+   * is placed right after the copy buttons of the output section. */
   function fallbackArea() {
     let area = $('copy-fallback');
     if (!area) {
@@ -940,8 +1002,8 @@
       area.readOnly = true;
       area.rows = 3;
       area.spellcheck = false;
-      area.setAttribute('aria-label', t('dock.copy'));
-      $('dock').querySelector('.dock-actions').after(area);
+      area.setAttribute('aria-label', t('copy.fallback'));
+      $('result').querySelector('.result-actions').after(area);
     }
     return area;
   }
@@ -970,6 +1032,31 @@
     $('announcement').textContent = t('copy.failed');
   }
 
+  /* ---- layout variable: the fixed clock ---- */
+
+  /* --clock-height is the clock's measured height plus a margin; the body's bottom
+   * padding reads it so the output section and the footer can scroll clear of the
+   * clock. style.css holds a fallback value. The clock is measured only while it is
+   * visible (below 768px it hides while a text area has focus). */
+  function updateClockHeight() {
+    const height = $('clock').offsetHeight;
+    if (height === 0) return;
+    document.documentElement.style.setProperty('--clock-height', (height + CLOCK_MARGIN) + 'px');
+  }
+
+  /* Resize events fire in bursts; one measurement per animation frame is enough. */
+  function scheduleLayout() {
+    if (layoutFrame) return;
+    layoutFrame = window.requestAnimationFrame(() => {
+      layoutFrame = 0;
+      updateClockHeight();
+    });
+  }
+
+  function wireLayout() {
+    window.addEventListener('resize', scheduleLayout);
+  }
+
   /* ---- whole page ---- */
 
   function render() {
@@ -979,7 +1066,10 @@
     renderStats();
     renderGrid();
     renderPosition();
-    renderDock();
+    renderResult();
+    renderDropped();
+    renderCompare();
+    scheduleLayout();
   }
 
   function localize() {
@@ -988,47 +1078,16 @@
     document.querySelectorAll('[data-i18n]').forEach(element => {
       element.textContent = t(element.dataset.i18n);
     });
-    document.querySelectorAll('[data-i18n-label]').forEach(element => {
-      element.setAttribute('aria-label', t(element.dataset.i18nLabel));
-    });
+    document.querySelectorAll('[data-i18n-label]').forEach(labelElement);
+    /* The language button is labelled with the name of the other language. */
     $('lang-toggle').setAttribute('lang', language === 'ja' ? 'en' : 'ja');
     $('compare-input').placeholder = t('compare.placeholder');
     const area = $('copy-fallback');
-    if (area) area.setAttribute('aria-label', t('dock.copy'));
+    if (area) area.setAttribute('aria-label', t('copy.fallback'));
     renderPresetOptions();
   }
 
-  function showTab(name) {
-    state.active = name;
-    for (const tab of TABS) {
-      const button = $('tab-' + tab);
-      button.setAttribute('aria-selected', String(tab === name));
-      button.tabIndex = tab === name ? 0 : -1;
-      $('panel-' + tab).hidden = tab !== name;
-    }
-  }
-
   /* ---- events ---- */
-
-  function wireTabs() {
-    for (const tab of TABS) {
-      const button = $('tab-' + tab);
-      button.addEventListener('click', () => showTab(tab));
-      button.addEventListener('keydown', event => {
-        const index = TABS.indexOf(tab);
-        const next = TABS[(index + 1) % TABS.length];
-        const previous = TABS[(index + TABS.length - 1) % TABS.length];
-        const target = {
-          ArrowRight: next, ArrowDown: next, ArrowLeft: previous, ArrowUp: previous, Home: TABS[0], End: TABS[TABS.length - 1]
-        }[event.key];
-        if (target) {
-          event.preventDefault();
-          showTab(target);
-          $('tab-' + target).focus();
-        }
-      });
-    }
-  }
 
   function wireInput() {
     for (const mode of ['text', 'hex']) {
@@ -1095,13 +1154,15 @@
       const value = $('granularity').value;
       state.granularity = GRANULARITIES.includes(value) ? value : 'step';
     });
+    /* The radix applies to the tiles of the boards and to the digest of the output. */
     $('radix-select').addEventListener('change', () => {
       const value = $('radix-select').value;
       state.radix = RADIXES.includes(value) ? value : 'hex';
       renderStage();
+      renderResult();
     });
     document.addEventListener('keydown', event => {
-      if (event.defaultPrevented || state.active !== 'free' || !state.result) return;
+      if (event.defaultPrevented || !state.result) return;
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target;
       const tag = target && target.tagName;
@@ -1148,7 +1209,7 @@
     });
   }
 
-  function wireDock() {
+  function wireOutput() {
     const formats = () => view.copyFormats(state.result);
     const copyButton = (id, pick) => {
       $(id).addEventListener('click', () => {
@@ -1171,20 +1232,17 @@
     });
   }
 
-  function wireSettings() {
+  /* The two round buttons at the right of the heading. The language switch redraws
+   * everything from the state, so the input, the position and the digest stay. */
+  function wireHeader() {
     $('lang-toggle').addEventListener('click', () => {
       language = language === 'ja' ? 'en' : 'ja';
       writeStorage(LANG_KEY, language);
       localize();
       render();
     });
-    $('theme-select').addEventListener('change', () => {
-      state.theme = $('theme-select').value === 'light' ? 'light' : 'dark';
-      applyDisplay();
-      saveDisplay();
-    });
-    $('motion-toggle').addEventListener('change', () => {
-      state.motion = $('motion-toggle').checked;
+    $('theme-toggle').addEventListener('click', () => {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
       applyDisplay();
       saveDisplay();
     });
@@ -1202,22 +1260,19 @@
   /* Applies the shared view from the fragment: input (text or hex), radix and the
    * compare field now, the position after the first computation. */
   function applyFragment(fragment) {
-    if (!fragment) return false;
+    if (!fragment) return;
     if (fragment.error) state.error = 'fragment';
     const value = fragment.m === 'x' ? fragment.hex : fragment.text;
-    let accepted = false;
     if (typeof value === 'string') {
       if (value.length > FRAGMENT_LIMIT) state.error = 'fragmentLimit';
       else {
         state.mode = fragment.m === 'x' ? 'hex' : 'text';
         if (state.mode === 'hex') state.hexText = value;
         else state.text = value;
-        accepted = true;
       }
     }
     if (RADIXES.includes(fragment.r)) state.radix = fragment.r;
     if (typeof fragment.d === 'string' && fragment.d.length <= FRAGMENT_LIMIT) state.compare = fragment.d;
-    return accepted;
   }
 
   function applyFragmentPosition(fragment) {
@@ -1235,21 +1290,21 @@
     language = pickLanguage([params.get('lang'), fragment ? fragment.l : null, readStorage(LANG_KEY)]);
     loadDisplay();
     applyDisplay();
-    const accepted = applyFragment(fragment);
+    applyFragment(fragment);
     if (!(globalThis.crypto && globalThis.crypto.subtle) && !state.error) state.error = 'cryptoUnavailable';
     $('input-title').tabIndex = -1;
     for (const name of BOARDS) $('board-' + name + '-title').tabIndex = -1;
     writeInputFields();
     $('compare-input').value = state.compare;
     localize();
-    wireTabs();
     wireInput();
     wireStage();
-    wireDock();
-    wireSettings();
-    showTab(accepted ? 'free' : 'guide');
+    wireOutput();
+    wireHeader();
+    wireLayout();
     recompute();
     applyFragmentPosition(fragment);
+    updateClockHeight();
   }
 
   perform(init);

@@ -9,9 +9,9 @@
 - `trace-view.js`：DOMに依存しないUMD。`SHA256ByteView`を公開。トレースと位置から描画モデルを作る純関数
 - `presets.js`：言語に依存しない入力のプリセット（`SHA256BytePresets`）。落とし穴の実験の対照ペア、NISTの例題、Day117の再現例。文言は辞書の`preset.<id>`。非ASCIIはエスケープで書く。Day117の例は起点のハッシュを埋め込まず、`day117.build(digestHexOf)`で計算して組み立てる
 - `messages.js`：静的・動的な文言の日英辞書
-- `app.js`：4つの入口、入力カード、ステージ、計器ドック、時計、DOM構築
-- `learning-progress.js`：理解チェックの保存（段階1cで追加）
-- `style.css`：幅320px以上、44px以上の操作要素、製図の意匠、明暗の配色トークン
+- `app.js`：1枚のページの結線＝5つの節（入力・入力の設定・バイト列・計算・出力）の描画、段階レールと盤面、時計、見出し右の丸ボタン（言語・明暗）、URLフラグメントの読み取り、DOM構築
+- 学習の流れ・座学・理解チェックは、置き場所を本人に確認してから足す（段階1c）
+- `style.css`：幅320px以上、どの幅でも1列（1280px以上は見出し・本文・フッターとも1,040pxで中央）、44px以上の操作要素、製図の意匠、明暗の配色トークン、画面下に固定の時計
 - `test/`：既知解答（FIPS 180-4・NIST・CAVP・RFC 6234・Day117）、不変条件、Web Cryptoとの一致、16進と文字列の規則、HTML、辞書、配色、README
 - `test/vectors/`：公式のテストベクトルの原本と、そこから機械的に抽出したJSON
 - `test/tools/`：抽出スクリプト。期待値は手で書かず、このスクリプトで原本から作る
@@ -110,7 +110,7 @@ DOMは`createElement`と`textContent`で組み立てます。CSPは`connect-src 
 
 動きはCSSOMの`transform`・`opacity`とSVGの属性・classだけで書きます。`setAttribute('style', …)`、動的な`<style>`、`insertRule`、`innerHTML`は使いません。`prefers-reduced-motion`では前後の静止2段に置き換えます。
 
-入力・ハッシュ・位置を保存しません。localStorageは言語の`sha256-byte-inspector.lang`、表示設定の`sha256-byte-inspector.display`、理解チェックの`sha256-byte-inspector.learning`だけを使います。URLへの書き込みは、読み込んだ`#`を消す`history.replaceState`の1か所だけです。
+入力・ハッシュ・位置を保存しません。localStorageは言語の`sha256-byte-inspector.lang`と、表示設定（`{"theme": "dark" | "light"}`だけ）の`sha256-byte-inspector.display`だけを使います。動きの抑制は設定を持たず、OSの`prefers-reduced-motion`に従います。URLへの書き込みは、読み込んだ`#`を消す`history.replaceState`の1か所だけです。
 
 改ざんの検知・整合性の検証・原像の計算を名乗りません。「同じバイト列なら同じハッシュになることを確かめる」「計算し直して値を比べる」「手で検算する」の形で書きます。純JSのSHA-256は教材のためのもので、本番の用途には`crypto.subtle`を使うことを明記します。
 
@@ -135,21 +135,27 @@ DOMは`createElement`と`textContent`で組み立てます。CSPは`connect-src 
 
 ### 画面（index.html）の約束
 
-- 入口＝`nav.entries`に`tab-guide`・`tab-free`・`tab-learn`・`tab-settings`（`role="tab"`、`aria-controls="panel-…"`）。最初に開くのは`guide`。段階1a-βでは`guide`と`learn`は見出しと短い案内だけ
-- 入力カード（`panel-free`の先頭）＝モードの切り替え`input-mode`（`text`／`hex`のラジオ）、`text-input`と`hex-input`（どちらもtextarea）、`newline-select`（lf／crlf）、`trailing-newline`、`bom-check`、`preset-select`（落とし穴の実験とDay117の再現例）、`input-stats`（3つの数と改行・BOM・正規化の札）、`input-error`（`role="alert"`）、`byte-grid`と`byte-legend`
-- 段階レール`stage-rail`＝7つのボタン（`data-phase`）。現在位置に`aria-current="step"`。`position-block`（ブロック番号）・`position-index`（スケジュールのtかラウンドのt）
-- ステージ`stage`＝`board-pad`・`board-split`・`board-schedule`・`board-round`・`board-final`・`board-digest`（各盤面は`section.board > h3#board-X-title + div.board-body`）。表示中の盤面以外は`hidden`。`board-schedule-title`と`board-round-title`は`{t}`を差し込むので`data-i18n`を付けず、`app.js`が書く
-- `app.js`が組む動的なDOMのクラス名は`style.css`が定める＝バイト格子`.byte-row > .byte-offset + .byte-cells > .byte-cell[data-cls]`（上限超は`pre.byte-plain`）、帯`.lane > .lane-head(.lane-label + .tile) + .bits > .bit(.is-one|.is-diff|.is-current|.is-source|.is-result)`、札`.tiles > .tile`、和`.sum > .sum-row(.is-result)`、一致バッジ`#match-badge[data-state="ok|ng|unknown"]`
-- 計器ドック`dock`＝`match-badge`（`role="status"`）、`digest-groups`、`radix-select`（hex／bin／dec）、`dropped-stats`、コピーのボタン（`copy-hash`・`copy-bytes-spaced`・`copy-bytes-joined`・`copy-sha256sum`・`copy-worksheet`）、`compare-input`と`compare-result`
-- 時計`clock`（画面下に固定。`panel-free`の末尾に置き、他の入口では表示されない。767px以下ではtextareaのフォーカス中に隠す）＝`clock-first`・`clock-prev`・`clock-play`・`clock-next`・`clock-last`、`clock-range`（`input type="range"`、`aria-valuetext`）、粒度`granularity`（1歩／8歩／1段／1ブロック）、`clock-speed`。段階1a-βでは送りと範囲だけ動き、自動再生と動きは段階1b
-- 見出し右に`lang-toggle`と`theme-select`（dark／light）を置く（仕様の「入力カード上部に明暗・JA/EN」）。設定`panel-settings`＝`motion-toggle`（動きを抑える。`app.js`が`:root[data-motion="reduce"]`を立てる）と明暗の注記、理解チェックの保存は段階1c
-- `aria-live`の要約は`announcement`（手動の歩と停止時だけ更新）、エラーは`error`（`role="alert"`）
+- 1枚のページ（2026-10-19、本人「シンプルにハッシュ値とその挙動をみたいだけ」「タブ機能なくしてよい」）。入口（タブ）・パネル・計器ドック・設定のパネル・動きの抑制のトグルは置かない。骨格＝見出し`header.page-header`（`h1`、右端の丸ボタン2つ、1行の説明）→`main`（どの幅でも1列。先頭に読み上げ用の`announcement`と`error`、次に5つの節、末尾に時計）→フッター（`privacy`・`author`・`repository`の3行）
+- `main`はCSS gridの1列（`minmax(0, 1fr)`、gap 16px）。1280px以上は`max-width: 1040px`で中央（32ビットの帯 20px×32 と、8グループ×1段の64桁が入る）。見出し`.page-header`とフッターも同じ1つの規則（`.page-header, main, footer`）で1,040pxにし、罫線の端と丸ボタンがカードの端にそろう（時計は`position: fixed`で別）。768〜1279pxに縦の入口レールはなく、ここも1列
+- 5つの節は`section.card`（`aria-labelledby`）で、見出しは`h2.section-title`＝`span.section-number`（数字。縁と文字だけ`--role1`）＋`span[data-i18n="section.*"]`。見出しの読みは「1 入力」だが、番号は辞書の値に入れず`index.html`の札で出す（「1 入力」の空白は和文と英数字の間の空白の規則に当たる）
+  1. 入力`input-card`（`h2#input-title`、`section.input`）＝モード`input-mode`（`input-mode-text`／`input-mode-hex`のラジオ）、`text-field`＋`text-input`（textarea、rows=4）、`hex-field`＋`hex-input`（textarea、rows=4、補助文`input.hex.help`）。モードで一方を`hidden`にする。`input-error`（`role="alert"`）、例を選ぶ`preset-select`（落とし穴の実験とDay117の再現例）
+  2. 入力の設定`input-options`（`h2#input-options-title`、`section.options`）＝`newline-select`（lf／crlf）、`trailing-newline`、`bom-check`（16進モードでは3つとも`disabled`）、上限の注記`input.limit`、`div#text-notes`（`input.encoding`「文字コードはUTF-8に固定」と`input.text.help`「入力欄の改行はLF…」。16進モードでは`hidden`）
+  3. バイト列`bytes`（`h2#bytes-title`。中の`span#bytes-title-text`の`data-i18n`と文字を`app.js`の`syncControls`が切り替える＝文字列モードは`section.bytes`「UTF-8に変換したバイト列」、16進モードは`section.bytesHex`「渡すバイト列（16進のまま）」）＝統計の札`input-stats`（数の札と改行・BOM・正規化の札。警告`warning.*`＝孤立サロゲート・ダンプ形式・ハッシュらしい入力は`div.warning`としてここに並ぶ）、`byte-grid`、`byte-legend`
+  4. SHA-256の計算`compute`（`h2#compute-title`、`section.compute`）＝段階レール`stage-rail`（7つのボタン、`data-phase`、現在位置に`aria-current="step"`）、`p.position-line`（`position-block`＝ブロック番号・`position-index`＝スケジュールのtかラウンドのt）、ステージ`stage`（sr-onlyの`h3#stage-title`と6盤面`board-pad`・`board-split`・`board-schedule`・`board-round`・`board-final`・`board-digest`。各盤面は`section.board > h3#board-X-title + div.board-body`、表示中以外は`hidden`。`board-schedule-title`と`board-round-title`は`{t}`を差し込むので`data-i18n`を付けず`app.js`が書く）、末尾にあふれの統計`p#dropped-stats`（`stage.dropped`、小さく。結果がないときは空で`display: none`）
+  5. 出力`result`（`section.card.result`、`h2#result-title`、`section.result`）＝`div.result-head`に見出しと一致バッジ`match-badge`（`role="status"`、`data-state="ok|ng|unknown|pending"`、文言は`result.match.*`。右端に寄せる）、帯`digest-groups`（8グループ×8桁。等幅・`tabular-nums`、枠2px`--line`、下地`--surface`、文字`--fg`。767px以下は2列×4段で1.375rem、768〜1279pxは4列×2段で1.5rem、1280px以上は8列×1段で1.375rem＝帯の内側982pxに8×8chと7つの12pxの隙間が入る最大の文字サイズ（1.5remは0.6em幅の等幅で約1,009px必要で入らない）。空入力でも`e3b0c442…`を出す。16進エラーとWeb Crypto不一致のときは中身を空にし、枠と見出しは残す）、注記`p.result-note`（`result.emptyNote`。`app.js`が空入力のときだけ`hidden`を外す）、基数`radix-select`（hex／bin／dec。盤面の札と出力の帯の両方に効く。2進は語ごとに32桁を8桁ずつ空白で区切り、10進は語ごとの値）、コピー`div.actions.result-actions`＝`copy-hash`・`copy-bytes-spaced`・`copy-bytes-joined`・`copy-sha256sum`・`copy-worksheet`（`copy-worksheet`はラウンドの盤面を見ているときだけ有効）、退避欄`copy-fallback`（`app.js`がクリップボードに書けなかったときに`.result-actions`の直後へ作る読み取り専用のtextarea。`aria-label`は`copy.fallback`）、比較欄`compare-input`（textarea、rows=1。共通の規則で44px以上）と`compare-result`（`role="status"`）
+- `app.js`が組む動的なDOMのクラス名は`style.css`が定める＝バイト格子`.byte-row > .byte-offset + .byte-cells > .byte-cell[data-cls]`（上限超は`pre.byte-plain`）、帯`.lane > .lane-head(.lane-label + .tile) + .bits > .bit(.is-one|.is-diff|.is-current|.is-source|.is-result)`、札`.tiles > .tile`、和`.sum > .sum-row(.is-result)`（ラベルは左・値は右寄せ。768px以上は`max-width: calc(32 * var(--bit-cell) + 9ch + 53px)`＝1文字ラベルの帯（e・f・g・a・b・c）と同じ幅で、値の右端がその帯の右端の縦線に乗る。768〜800pxは帯が頭の下に折れ、箱が盤面より広いので効かない）、一致バッジ`#match-badge[data-state="ok|ng|unknown|pending"]`
+- 時計`clock`（`main`の末尾。画面下に`position: fixed`。767px以下ではtextareaのフォーカス中に隠し、フォーカスが離れて300ms後に戻す）＝`clock-first`・`clock-prev`・`clock-play`・`clock-next`・`clock-last`、`clock-range`（`input type="range"`、`aria-valuetext`）、粒度`granularity`（1歩／8歩／1段／1ブロック）、`clock-speed`。段階1a-βでは送りと範囲だけ動き、自動再生と動きは段階1b。`body`の`padding-bottom`は`var(--clock-height)`で、`app.js`が起動時と`resize`（1フレームに1回）に`#clock.offsetHeight`＋8pxを`documentElement.style.setProperty('--clock-height', …)`で書く（`style.css`の値は読み込み前の控え）。これが唯一のCSSOMへの書き込み
+- 見出し右の`div.header-tools`（flex、`justify-content: flex-end`、gap 8px）に丸ボタン`lang-toggle`と`theme-toggle`（`button.icon-button`、44×44pxの円、1px`--border`、下地`--surface`、hoverとfocus-visibleで縁を`--role1`に）。アイコンは`index.html`の静的なインラインSVG（`viewBox="0 0 24 24"`、`fill="none"`、`stroke="currentColor"`、`aria-hidden="true"`、`focusable="false"`。style属性とon*属性は使わない。幅と高さはCSSで22px）＝言語は翻訳の記号`.icon-translate`、明暗は太陽`.icon-sun`と月`.icon-moon`を`hidden`属性で切り替える（ダーク表示中は太陽＝押すとライト、ライト表示中は月＝押すとダーク。SVG要素には`hidden`プロパティがないので`toggleAttribute('hidden', …)`で切り替え、検査も`hasAttribute`で読む）。`aria-label`と`title`は`data-i18n-label`から＝`language`（相手の言語名）、`theme.toLight`／`theme.toDark`（`app.js`が`applyDisplay`で書き換える）。`aria-pressed`は使わず、ラベルで次の状態を言う。767px以下ではタイトルの下の行で右寄せ、768px以上ではタイトルの行の右端（タイトルは中央のまま）。言語の切り替えは描画だけで、入力・位置・ダイジェストを保持する
+- 盤面`.board`は390px未満では横の枠と余白を持たない（320pxでカードの内側は274px、16セル×16px＋15の隙間の帯は271px。盤面の横の枠と余白を足すと入らない）。上の罫線1本で位置の行と区切る。390px以上はカードと同じ枠と余白。768〜800pxは`--bit-gap: 0`と盤面の横余白8pxで32セルの帯を収める
+- `aria-live`の要約は`announcement`（手動の歩と停止時だけ更新）、エラーは`error`（`role="alert"`）。どちらも`main`の先頭に置く
 - 外部リンクは`<a target="_blank" rel="noopener noreferrer">`で、許可リストをテストで固定する
+- URLの`#`の受け取り（`text`／`hex`／`m`／`at`／`r`／`l`／`d`）は変えない。`dock`というid、「計器」「入口」「タブ」の語、`tabs`・`tab.*`・`guide.*`・`learn.*`・`settings.*`・`dock.*`の辞書キーは使わない。学習の流れ・座学・理解チェックの置き場所は本人に確認する（段階1c）
 
 ### 辞書（messages.js）の約束
 
 - `ja`と`en`のキーは同じ集合。`{name}`の差し込みも同じ。JavaScriptに日本語を書かず、画面の文言は辞書から`t(key, values)`で引く
-- キーの名前空間＝`title`・`description`・`language`・`tabs`・`tab.*`・`guide.*`・`learn.*`・`input.*`・`stats.*`・`byte.*`・`cls.*`（文字の分類名。`SHA256ByteInput.CLASSES`と同じ15個）・`warning.*`・`error.*`・`preset.*`・`rail.*`・`stage.*`・`phase.*`（`positionModel.labelKey`が引く6個）・`board.*`・`dock.*`・`copy.*`・`compare.*`・`clock.*`・`settings.*`・`privacy`・`author`・`repository`・`noscript.ja`・`noscript.en`・`busy`・`ready`。`test/i18n.test.js`がこの一覧を検査する
+- キーの名前空間＝`title`・`description`・`language`・`section.*`（5節の見出し6個＝`input`・`options`・`bytes`・`bytesHex`・`compute`・`result`。値に番号を含めない）・`input.*`・`stats.*`・`byte.*`・`cls.*`（文字の分類名。`SHA256ByteInput.CLASSES`と同じ15個）・`warning.*`・`error.*`・`preset.*`・`rail.*`・`stage.*`（`stage.title`・`stage.dropped`）・`phase.*`（`positionModel.labelKey`が引く6個）・`board.*`・`result.*`（`result.emptyNote`・`result.match.*`・`result.radix`・`result.radix.*`）・`copy.*`（`copy.fallback`を含む）・`compare.*`・`clock.*`・`theme.*`・`privacy`・`author`・`repository`・`noscript.ja`・`noscript.en`・`busy`・`ready`。`tabs`・`tab.*`・`guide.*`・`learn.*`・`settings.*`・`dock.*`は入口と計器ドックの廃止で使わない。`test/i18n.test.js`がこの一覧を検査する
+- 日本語の文言で「計器」「入口」「タブ」を使わない（英語でも instruments・dock・entrance・tab を使わない。`TAB (09)`の制御文字名は別）
 - 日本語の文言で使わない語は`test/i18n.test.js`の正規表現に定める（閉じた漢字で書く副詞、長音を省いたカタカナ、直訳調の動詞、前置きの決まり文句、「か所」の表記など。Day117の`test/i18n.test.js`と同じ一覧）。カタカナの長音は省かない（サーバー・ユーザー・ブラウザー・フォルダー・パラメーター・エディター・マネージャー・リポジトリー）。和文と英数字の間に空白を入れない。行末に「：」を置かない
 - 改ざんを防ぐ・改ざん防止・改ざんの証明・検証ツール・原像を求める・復号・解読を機能の説明に使わない
 
@@ -174,15 +180,16 @@ DOMは`createElement`と`textContent`で組み立てます。CSPは`connect-src 
 | `--focus` | `#ffffff` | `#000000` | フォーカスの輪郭 2px＋2px |
 | `--border` | `#7d8b9a` | `#5c6773` | 操作要素の縁（`--bit0`と同じ値。背景と3:1以上） |
 
-役色は塗りに使いません（縁・下線・文字だけ）。差分だけ塗り、塗りの上の文字は`--bg`です。等幅は`ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace`、`font-variant-numeric: tabular-nums slashed-zero`。セルの幅はpxで固定し、文字の下限はセル内14px・本文16px。添字は使いません。
+役色は塗りに使いません（縁・下線・文字だけ）。差分だけ塗り、塗りの上の文字は`--bg`です。プレースホルダーの文字は`::placeholder { color: var(--muted); opacity: 1 }`で描きます（ブラウザー既定の灰色は明暗とも4.5:1未満）。等幅は`ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace`、`font-variant-numeric: tabular-nums slashed-zero`。セルの幅はpxで固定し、文字の下限はセル内14px・本文16px。添字は使いません。
 
 ### 段階1a-βのテスト
 
 - `test/view.test.js`：描画モデルの純関数。"abc"のトレースでscheduleModel(16)・roundModel(0)・finalModel・digestModelの値、byteGridの行と上限、compareDigestの抜き出し、worksheetの数値がトレースと一致
-- `test/html.test.js`：スクリプトの並び（sha256-core.js・input-core.js・presets.js・trace-view.js・messages.js・app.js）、CSPの文字列、referrer、favicon、`[hidden]`、id重複なし、4つの入口と盤面のid、`<a>`の許可リスト、`data-i18n`のキーが辞書にあること
-- `test/i18n.test.js`：ja/enのキーと差し込みの一致、禁止語、空白、JSに日本語がないこと、サンプル（プリセット）の入力文字列が辞書の外にあり日英で同じこと
+- `test/html.test.js`：スクリプトの並び（sha256-core.js・input-core.js・presets.js・trace-view.js・messages.js・app.js）、CSPの文字列、referrer、favicon、`[hidden]`、id重複なし、入口・タブ・パネル・`#dock`・`motion-toggle`の不在、`main`の先頭の`announcement`と`error`、文書順1→5の5節（idと`h2`の番号の札＋`section.*`）、各節の中身、6盤面と`dropped-stats`、時計が`main`の末尾、ヘッダーのSVGの丸ボタン、`<a>`の許可リストとフッターの3行、`data-i18n`のキーが辞書にあること
+- `test/i18n.test.js`：ja/enのキーと差し込みの一致、名前空間（`section.*`を含み、`tab`・`guide`・`learn`・`settings`・`dock`を含まない）、消したキーの不在、節の見出し6個の値（番号なし）、禁止語と「計器」「入口」「タブ」の不在、空白、JSに日本語がないこと、サンプル（プリセット）の入力文字列が辞書の外にあり日英で同じこと
+- `test/app.test.js`：`t()`の差し込み名、動的キーの接頭辞（`result.match.`を含む）、`$()`のidが`index.html`にあること、tab・panel・dock・motionの処理の不在、storageのキーが`.lang`と`.display`の2つで`display`が`{theme}`だけ、丸ボタン、基数が盤面と出力の両方に効くこと、退避欄の置き場所、`--clock-height`の実測
 - `test/contrast.test.js`：上の表の全組（文字4.5:1、縁3:1）を明暗で検査
-- `test/css.test.js`：`prefers-reduced-motion`の規則、288pxを超える固定幅なし、44pxの操作要素、`[hidden]`、`setAttribute('style'`・`innerHTML`・`insertRule`がapp.jsにないこと
+- `test/css.test.js`：`prefers-reduced-motion`の規則と`data-motion`の不在、288pxを超える固定幅なし（300pxの列と64pxのレールの不在。`max-width`は1040・1288・1320だけ）、`main`の1列（gap 16px）と1280pxの`max-width: 1040px`（`.page-header, main, footer`の1つの規則）、盤面の枠（390px未満は横の枠なし、768〜800pxの詰め）、和`.sum`の幅（768px以上の`calc(32 * var(--bit-cell) + 9ch + 53px)`）、出力の帯（枠2px、1.375rem×2列／1.5rem×4列／1.375rem×8列）、44pxの操作要素と`::placeholder`の色、`[hidden]`、時計、`setAttribute('style'`・`innerHTML`・`insertRule`がapp.jsにないこと
 
 ## 先行例
 

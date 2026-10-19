@@ -1,11 +1,12 @@
 /* Tests for messages.js and the wording rules of CLAUDE.md: identical key sets
- * and substitutions in both languages, the key list of the contract, the keys
- * referenced by index.html and app.js, no Japanese (or any non-ASCII) in the
- * JavaScript outside the Japanese values of messages.js, the words the Japanese
- * copy avoids, no spaces between Japanese and Latin characters, polite sentence
- * endings, no claims of tamper prevention or verification, and preset labels for
- * every preset. Japanese in this file is written with \uXXXX escapes; the
- * comments name each word. */
+ * and substitutions in both languages, the key list of the contract (the five
+ * section headings in the section.* namespace, no tab, guide, learn, settings or
+ * dock keys), the keys referenced by index.html and app.js, no Japanese (or any
+ * non-ASCII) in the JavaScript outside the Japanese values of messages.js, the
+ * words the Japanese copy avoids, no spaces between Japanese and Latin
+ * characters, polite sentence endings, no claims of tamper prevention or
+ * verification, and preset labels for every preset. Japanese in this file is
+ * written with \uXXXX escapes; the comments name each word. */
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,19 +35,23 @@ const CLAIMS_JA = /\u6539\u3056\u3093\u3092\u9632\u3050|\u6539\u3056\u3093\u9632
 const CLAIMS_EN = /tamper[- ]?proof|prevents? tampering|proof of tampering|verification tool|decrypt|decode the hash|reverse the hash|find(?:s|ing)? (?:a |the )?preimage/i;
 /* Polite sentence endings (desu/masu forms), optionally followed by a parenthesis. */
 const POLITE_END = /(?:\u3067\u3059|\u307e\u3059|\u307e\u305b\u3093|\u307e\u3057\u305f|\u3067\u3057\u305f|\u307e\u3057\u3087\u3046|\u304f\u3060\u3055\u3044)(?:\uff08[^\uff09]*\uff09)?$/;
+/* Words of the retired layout: keiki (instruments, the dock), nyuuguchi (entrance) and tabu (tab). */
+const RETIRED_WORDS = /\u8a08\u5668|\u5165\u53e3|\u30bf\u30d6/;
 
 const REQUIRED = [
-  'title', 'description', 'language', 'tabs', 'tab.guide', 'tab.free', 'tab.learn', 'tab.settings',
-  'guide.placeholder', 'learn.placeholder',
-  'input.title', 'input.mode', 'input.mode.text', 'input.mode.hex', 'input.text.label', 'input.hex.label', 'input.encoding',
+  'title', 'description', 'language',
+  'section.input', 'section.options', 'section.bytes', 'section.bytesHex', 'section.compute', 'section.result',
+  'input.mode', 'input.mode.text', 'input.mode.hex', 'input.text.label', 'input.text.help', 'input.hex.label', 'input.hex.help', 'input.encoding',
   'input.newline', 'input.newline.lf', 'input.newline.crlf', 'input.trailing', 'input.bom', 'input.preset', 'input.preset.none', 'input.limit',
-  'stats.codePoints', 'stats.utf16', 'stats.bytes', 'stats.blocks', 'stats.newlines', 'stats.trailing.none', 'stats.trailing.lf', 'stats.trailing.crlf',
+  'stats.title', 'stats.codePoints', 'stats.utf16', 'stats.bytes', 'stats.blocks', 'stats.newlines', 'stats.trailing.none', 'stats.trailing.lf', 'stats.trailing.crlf',
   'stats.bom', 'stats.loneSurrogates', 'stats.normalization.nfc', 'stats.normalization.nfd', 'stats.normalization.both', 'stats.normalization.neither',
-  'error.hex.odd-length', 'error.hex.invalid-char', 'error.limit', 'error.generic', 'error.cryptoUnavailable',
+  'byte.legend',
+  'error.hex.odd-length', 'error.hex.invalid-char', 'error.limit', 'error.generic', 'error.cryptoUnavailable', 'error.fragment', 'error.fragmentLimit',
   'warning.dump-like', 'warning.hash-like', 'warning.lone-surrogate',
   'preset.group.basic', 'preset.group.bytes', 'preset.group.newline', 'preset.group.unicode', 'preset.group.day117',
-  'rail.input', 'rail.pad', 'rail.split', 'rail.schedule', 'rail.round', 'rail.final', 'rail.digest', 'rail.block',
+  'rail.title', 'rail.input', 'rail.pad', 'rail.split', 'rail.schedule', 'rail.round', 'rail.final', 'rail.digest', 'rail.block',
   'phase.pad', 'phase.split', 'phase.schedule', 'phase.round', 'phase.final', 'phase.digest',
+  'stage.title', 'stage.dropped',
   'board.pad.title', 'board.pad.message', 'board.pad.one', 'board.pad.zeros', 'board.pad.length', 'board.pad.blocks', 'board.pad.boundary',
   'board.split.title', 'board.split.word',
   'board.schedule.title', 'board.schedule.refs', 'board.schedule.sigma0', 'board.schedule.sigma1', 'board.schedule.rotr', 'board.schedule.shr', 'board.schedule.sum', 'board.schedule.fromBlock',
@@ -54,14 +59,20 @@ const REQUIRED = [
   'board.round.T1', 'board.round.T2', 'board.round.newE', 'board.round.newA', 'board.round.K', 'board.round.W', 'board.round.newly',
   'board.final.title', 'board.final.lane', 'board.digest.title', 'board.digest.concat',
   'board.raw', 'board.dropped', 'board.out', 'board.overflow',
-  'dock.title', 'dock.match.ok', 'dock.match.ng', 'dock.match.unknown', 'dock.match.pending', 'dock.radix', 'dock.radix.hex', 'dock.radix.bin', 'dock.radix.dec',
-  'dock.dropped', 'dock.digest',
-  'copy.hash', 'copy.bytesSpaced', 'copy.bytesJoined', 'copy.sha256sum', 'copy.worksheet', 'copy.done', 'copy.failed',
+  'result.emptyNote', 'result.match.ok', 'result.match.ng', 'result.match.unknown', 'result.match.pending', 'result.radix', 'result.radix.hex', 'result.radix.bin', 'result.radix.dec',
+  'copy.hash', 'copy.bytesSpaced', 'copy.bytesJoined', 'copy.sha256sum', 'copy.worksheet', 'copy.done', 'copy.failed', 'copy.fallback',
   'compare.label', 'compare.placeholder', 'compare.match', 'compare.mismatch', 'compare.none', 'compare.multiple', 'compare.normalized',
-  'clock.first', 'clock.prev', 'clock.play', 'clock.pause', 'clock.next', 'clock.last', 'clock.granularity',
+  'clock.title', 'clock.range', 'clock.first', 'clock.prev', 'clock.play', 'clock.pause', 'clock.next', 'clock.last', 'clock.granularity',
   'clock.granularity.step', 'clock.granularity.eight', 'clock.granularity.phase', 'clock.granularity.block', 'clock.speed', 'clock.position',
-  'settings.title', 'settings.theme', 'settings.theme.dark', 'settings.theme.light', 'settings.motion', 'settings.motion.note',
+  'theme.toLight', 'theme.toDark',
   'privacy', 'author', 'repository', 'noscript.ja', 'noscript.en', 'busy', 'ready'
+];
+/* Keys of the retired entrances, panels and dock (and the headings they replaced). */
+const RETIRED = [
+  'tabs', 'tab.guide', 'tab.free', 'tab.learn', 'tab.settings', 'guide.placeholder', 'learn.placeholder', 'learn.section.1', 'learn.section.12',
+  'dock.title', 'dock.match.ok', 'dock.match.ng', 'dock.match.unknown', 'dock.match.pending', 'dock.radix', 'dock.radix.hex', 'dock.dropped', 'dock.copy', 'dock.digest',
+  'settings.title', 'settings.themeNote', 'settings.motion', 'settings.motion.note', 'settings.theme', 'settings.theme.dark', 'settings.theme.light',
+  'input.title', 'byte.title', 'result.title'
 ];
 const SUBSTITUTIONS = {
   'stats.newlines': ['cr', 'crlf', 'lf'], 'stats.loneSurrogates': ['n'],
@@ -69,10 +80,10 @@ const SUBSTITUTIONS = {
   'error.limit': ['max'], 'error.fragmentLimit': ['max'], 'warning.lone-surrogate': ['n'], 'rail.block': ['n', 'total'],
   'phase.schedule': ['t'], 'phase.round': ['t'], 'board.pad.zeros': ['count'], 'board.pad.length': ['bits'], 'board.pad.blocks': ['n'],
   'board.schedule.title': ['t'], 'board.schedule.rotr': ['n'], 'board.schedule.shr': ['n'], 'board.round.title': ['t'],
-  'board.final.lane': ['i'], 'board.dropped': ['n'], 'dock.dropped': ['f', 'ft', 'm', 's', 'st', 't', 'tt'],
+  'board.final.lane': ['i'], 'board.dropped': ['n'], 'stage.dropped': ['f', 'ft', 'm', 's', 'st', 't', 'tt'],
   'compare.multiple': ['n'], 'clock.position': ['id']
 };
-const NAMESPACES = /^(?:title|description|language|tabs|privacy|author|repository|busy|ready|noscript\.(?:ja|en)|(?:tab|guide|learn|input|stats|byte|cls|error|warning|preset|rail|phase|stage|board|dock|copy|compare|clock|settings)\..+)$/;
+const NAMESPACES = /^(?:title|description|language|privacy|author|repository|busy|ready|noscript\.(?:ja|en)|(?:section|input|stats|byte|cls|error|warning|preset|rail|phase|stage|board|result|copy|compare|clock|theme)\..+)$/;
 
 const parameters = value => [...value.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
 
@@ -99,19 +110,46 @@ test('Japanese and English keys and substitutions match', () => {
   assert.ok(Object.isFrozen(messages.ja) && Object.isFrozen(messages.en));
 });
 
-test('The key list of the contract is complete, including the twelve lessons, the classes and every preset', () => {
+test('The key list of the contract is complete (sections, classes, every preset) and the retired keys are gone', () => {
   const required = REQUIRED.slice();
-  for (let n = 1; n <= 12; n += 1) required.push('learn.section.' + n);
   for (const cls of input.CLASSES) required.push('cls.' + cls);
   assert.equal(input.CLASSES.length, 15);
   assert.deepEqual(Object.keys(messages.ja).filter(key => key.startsWith('cls.')).map(key => key.slice(4)).sort(), input.CLASSES.slice().sort());
   for (const preset of presets.list) required.push('preset.' + preset.id, 'preset.group.' + preset.group);
   assert.equal(presets.list.length, 44);
   for (const key of required) assert.ok(Object.hasOwn(messages.ja, key), 'missing ' + key);
+  for (const key of RETIRED) assert.ok(!Object.hasOwn(messages.ja, key) && !Object.hasOwn(messages.en, key), key + ' was retired');
+  for (const key of Object.keys(messages.ja)) assert.doesNotMatch(key, /^(?:tab|tabs$|guide|learn|dock|settings)/, key);
   for (const [key, names] of Object.entries(SUBSTITUTIONS)) assert.deepEqual(parameters(messages.ja[key]), names, key);
   for (const key of Object.keys(messages.ja)) {
     if (!Object.hasOwn(SUBSTITUTIONS, key)) assert.deepEqual(parameters(messages.ja[key]), [], key + ' has unexpected substitutions');
   }
+});
+
+test('Section headings: six section.* keys, the number lives in the markup, the bytes heading has a hex variant', () => {
+  const keys = Object.keys(messages.ja).filter(key => key.startsWith('section.'));
+  assert.deepEqual(keys, ['section.input', 'section.options', 'section.bytes', 'section.bytesHex', 'section.compute', 'section.result'], 'in reading order');
+  for (const key of keys) {
+    for (const lang of ['ja', 'en']) {
+      assert.doesNotMatch(messages[lang][key], /^\d/, lang + ' ' + key + ' carries no number (the marker is in index.html)');
+      assert.doesNotMatch(messages[lang][key], /[.\u3002]$/, lang + ' ' + key + ' is a label');
+    }
+  }
+  /* nyuuryoku (input), nyuuryoku no settei (input settings), UTF-8 ni henkan shita baito-retsu
+   * (bytes after UTF-8 encoding), watasu baito-retsu (16-shin no mama) (bytes as given, hex),
+   * SHA-256 no keisan (computation), shutsuryoku (SHA-256) (output). */
+  assert.equal(messages.ja['section.input'], '\u5165\u529b');
+  assert.equal(messages.ja['section.options'], '\u5165\u529b\u306e\u8a2d\u5b9a');
+  assert.equal(messages.ja['section.bytes'], 'UTF-8\u306b\u5909\u63db\u3057\u305f\u30d0\u30a4\u30c8\u5217');
+  assert.equal(messages.ja['section.bytesHex'], '\u6e21\u3059\u30d0\u30a4\u30c8\u5217\uff0816\u9032\u306e\u307e\u307e\uff09');
+  assert.equal(messages.ja['section.compute'], 'SHA-256\u306e\u8a08\u7b97');
+  assert.equal(messages.ja['section.result'], '\u51fa\u529b\uff08SHA-256\uff09');
+  assert.equal(messages.en['section.input'], 'Input');
+  assert.equal(messages.en['section.options'], 'Input settings');
+  assert.equal(messages.en['section.bytes'], 'Bytes after UTF-8 encoding');
+  assert.equal(messages.en['section.bytesHex'], 'Bytes as given (hex)');
+  assert.equal(messages.en['section.compute'], 'SHA-256 computation');
+  assert.equal(messages.en['section.result'], 'Output (SHA-256)');
 });
 
 test('Keys referenced by index.html and app.js exist', () => {
@@ -123,6 +161,8 @@ test('Keys referenced by index.html and app.js exist', () => {
   const literalKeys = [...app.matchAll(/\bt\(\s*'([\w.-]+)'\s*[,)]/g)].map(match => match[1]);
   assert.ok(literalKeys.length > 20, 'app.js reads its wording through t()');
   for (const key of literalKeys) assert.ok(Object.hasOwn(messages.ja, key), key);
+  /* Keys set as whole strings in a conditional rather than through t('...') directly. */
+  for (const key of ['section.bytes', 'section.bytesHex', 'theme.toLight', 'theme.toDark']) assert.ok(app.includes("'" + key + "'") && Object.hasOwn(messages.ja, key), key);
 });
 
 test('JavaScript is ASCII except the Japanese values of messages.js, with LF line endings', () => {
@@ -146,13 +186,16 @@ test('JavaScript is ASCII except the Japanese values of messages.js, with LF lin
   });
 });
 
-test('Japanese wording: avoided words, no spaces around Latin text, no line ending with a colon', () => {
+test('Japanese wording: avoided words, no spaces around Latin text, no line ending with a colon, no words of the retired layout', () => {
   for (const [key, value] of Object.entries(messages.ja)) {
     assert.doesNotMatch(value, FORBIDDEN, key);
     assert.doesNotMatch(value, SPACED, key);
     assert.doesNotMatch(value, /[\uff1a:]$/m, key);
     assert.doesNotMatch(value, /[\uff01\uff1f!?]/, key + ' avoids exclamation and question marks');
+    assert.doesNotMatch(value, RETIRED_WORDS, key + ' names no instruments, entrance or tab');
   }
+  /* Case-sensitive: "TAB (09)" names the control character, not a tab of the page. */
+  for (const [key, value] of Object.entries(messages.en)) assert.doesNotMatch(value, /\b(?:[Ii]nstruments?|[Dd]ock|[Ee]ntrance|[Tt]ab)\b/, key);
 });
 
 test('Japanese sentences end in the polite form; labels have no sentence-final period', () => {
@@ -183,6 +226,13 @@ test('English has no Japanese beyond the language switch and noscript.ja, and no
     assert.doesNotMatch(value, /:$/m, key);
   }
   assert.equal(messages.ja.language, 'English');
+  /* The theme button says where a click leads: raito (light) or daaku (dark) + ni suru. */
+  assert.match(messages.ja['theme.toLight'], /^\u30e9\u30a4\u30c8.*\u306b\u3059\u308b$/);
+  assert.match(messages.ja['theme.toDark'], /^\u30c0\u30fc\u30af.*\u306b\u3059\u308b$/);
+  assert.match(messages.en['theme.toLight'], /^Switch to light\b/);
+  assert.match(messages.en['theme.toDark'], /^Switch to dark\b/);
+  /* The privacy line still says that only the language and display settings are stored. */
+  assert.match(messages.en.privacy, /Only the language and display settings are stored/);
 });
 
 test('Claims do not present the tool as tamper prevention, verification or decryption', () => {
