@@ -188,19 +188,11 @@
   }
 
   /* The saved display settings hold the theme only; without one the page opens in
-   * the blueprint (dark) theme whatever the OS setting is. Reduced motion is not stored: style.css follows the OS setting. */
+   * the blueprint (dark) theme whatever the OS setting is. theme-init.js has already
+   * set data-theme in <head> before the first paint, so start-up reads it back.
+   * Reduced motion is not stored: style.css follows the OS setting. */
   function loadDisplay() {
-    let saved = null;
-    const raw = readStorage(DISPLAY_KEY);
-    if (raw) {
-      try {
-        saved = JSON.parse(raw);
-      } catch (error) {
-        saved = null;
-      }
-    }
-    const theme = saved && typeof saved === 'object' ? saved.theme : null;
-    state.theme = theme === 'light' || theme === 'dark' ? theme : 'dark';
+    state.theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
   }
 
   /* aria-label from data-i18n-label; an icon-only button gets the same text as its title. */

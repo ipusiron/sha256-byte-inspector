@@ -192,6 +192,7 @@ sha256-byte-inspector/                    # Root of the tool
 │   ├── input.test.js                     # Input rules
 │   ├── readme.test.js                    # Documentation matches the code
 │   ├── rfc6234.test.js                   # RFC 6234 vectors
+│   ├── theme-init.test.js                # Initial theme
 │   ├── tools/                            # Extraction of expected values
 │   │   ├── extract-day117-inputs.js      # Day117 reproductions
 │   │   ├── extract-nist-examples.js      # NIST examples
@@ -215,6 +216,7 @@ sha256-byte-inspector/                    # Root of the tool
 │   │   ├── sha2-additional-sha256.json   # Extracted from SHA-2 Additional
 │   │   └── sha2-additional.txt           # Original of SHA-2 Additional
 │   └── view.test.js                      # Rendering models
+├── theme-init.js                         # Theme before the first paint
 └── trace-view.js                         # Rendering models
 ```
 
