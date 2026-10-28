@@ -16,6 +16,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const app = read('app.js');
+const themeInit = read('theme-init.js');
 const html = read('index.html');
 const messages = require('../messages.js');
 const presets = require('../presets.js');
@@ -85,7 +86,9 @@ test('No tabs, panels or motion setting: the page is one column and reduced moti
   assert.doesNotMatch(app, /dock|--dock-offset|dock-offset|free-main|free-columns|sticky/i);
   assert.doesNotMatch(app, /prefers-reduced-motion/, 'style.css handles the OS setting');
   assert.doesNotMatch(app, /prefers-color-scheme/, 'the page opens in the blueprint (dark) theme whatever the OS setting is');
-  assert.match(app, /theme === 'light' \|\| theme === 'dark' \? theme : 'dark'/, 'without a saved choice the theme is dark');
+  assert.doesNotMatch(themeInit, /prefers-color-scheme|matchMedia/, 'the page opens in the blueprint (dark) theme whatever the OS setting is');
+  assert.match(themeInit, /theme === 'light' \|\| theme === 'dark' \? theme : 'dark'/, 'without a saved choice the theme is dark');
+  assert.match(app, /state\.theme = document\.documentElement\.dataset\.theme === 'light' \? 'light' : 'dark';/, 'start-up reads the theme set in <head>');
   assert.match(app, /JSON\.stringify\(\{ theme: state\.theme \}\)/, 'the display setting holds the theme only');
   assert.doesNotMatch(app, /\bt\(\s*'(?:tab|guide|learn|settings|dock)\./);
 });

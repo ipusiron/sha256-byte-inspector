@@ -215,6 +215,7 @@ sha256-byte-inspector/                    # 教材のルート
 │   ├── input.test.js                     # 入力の規則の検査
 │   ├── readme.test.js                    # 説明と実装の一致
 │   ├── rfc6234.test.js                   # RFC 6234のベクトル
+│   ├── theme-init.test.js                # 最初の明暗の検査
 │   ├── tools/                            # 期待値の抽出
 │   │   ├── extract-day117-inputs.js      # Day117の再現例
 │   │   ├── extract-nist-examples.js      # NISTの例題
@@ -238,6 +239,7 @@ sha256-byte-inspector/                    # 教材のルート
 │   │   ├── sha2-additional-sha256.json   # SHA-2 Additionalの抽出結果
 │   │   └── sha2-additional.txt           # SHA-2 Additionalの原本
 │   └── view.test.js                      # 描画モデルの検査
+├── theme-init.js                         # 描画前の明暗の決定
 └── trace-view.js                         # 描画モデル
 ```
 

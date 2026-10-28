@@ -228,7 +228,7 @@ test('Drafting look: no glow, role colors only on borders and text, theme blocks
   assert.doesNotMatch(declarations, /background(?:-color)?:\s*var\(--(?:warn|muted|line|bit0|border)\)/);
   assert.match(rule(':root'), /color-scheme:\s*dark;/);
   assert.match(rule(':root[data-theme="light"]'), /color-scheme:\s*light;/);
-  assert.doesNotMatch(plain, /prefers-color-scheme/, 'app.js decides the theme and sets data-theme');
+  assert.doesNotMatch(plain, /prefers-color-scheme/, 'theme-init.js decides the theme and sets data-theme');
   const outsideTokens = declarations.replace(/--[\w-]+:\s*#[0-9a-f]{6};/g, '');
   assert.doesNotMatch(outsideTokens, /#[0-9a-fA-F]{3,8}\b/, 'colors come from the tokens');
 });

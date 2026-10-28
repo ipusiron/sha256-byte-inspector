@@ -9,6 +9,7 @@
 - `trace-view.js`：DOMに依存しないUMD。`SHA256ByteView`を公開。トレースと位置から描画モデルを作る純関数
 - `presets.js`：言語に依存しない入力のプリセット（`SHA256BytePresets`）。落とし穴の実験の対照ペア、NISTの例題、Day117の再現例。文言は辞書の`preset.<id>`。非ASCIIはエスケープで書く。Day117の例は起点のハッシュを埋め込まず、`day117.build(digestHexOf)`で計算して組み立てる
 - `messages.js`：静的・動的な文言の日英辞書
+- `theme-init.js`：最初の描画の前に`<html>`の`data-theme`を決める小さなスクリプト。`<head>`で`style.css`の直後に`defer`なしで読む
 - `app.js`：1枚のページの結線＝5つの節（入力・入力の設定・バイト列・計算・出力）の描画、段階レールと計算の一覧表示（5つのパネルを初回に組み、歩ごとに強調のclassと帯の差し込みだけ更新）、時計（手動の送りと自動再生、現在の行への追従）、見出し右の丸ボタン（言語・明暗・ヘルプ）、ヘルプのダイアログ、URLフラグメントの読み取り、DOM構築
 - 学習の流れ・座学・理解チェックは、置き場所を本人に確認してから足す（段階1c）
 - `style.css`：幅320px以上、どの幅でも1列（1280px以上は見出し・本文・フッターとも1,040pxで中央）、44px以上の操作要素、製図の意匠、明暗の配色トークン、計算の一覧表示（語の行・64ラウンドの表・差し込みの帯）、画面下に固定の時計（下地`--surface`、上辺に`--role1`の細線）、ヘルプの`<dialog>`
@@ -170,7 +171,7 @@ DOMは`createElement`と`textContent`で組み立てます。CSPは`connect-src 
 
 ### 配色トークンと明暗
 
-`:root`はダーク（青焼き）、`:root[data-theme="light"]`はライト（紙）です。起動時に`app.js`が保存済みの選択から`data-theme`を決め、保存がなければOSの設定（`prefers-color-scheme`）にかかわらずダーク（青焼き）で開きます。contrast.test.jsは両方の`:root`ブロックを読み、組ごとに比を数値で検査します。
+`:root`はダーク（青焼き）、`:root[data-theme="light"]`はライト（紙）です。最初の描画の前に、`<head>`で`style.css`の直後に`defer`なしで読む`theme-init.js`が保存済みの選択から`data-theme`を決め、保存がなければOSの設定（`prefers-color-scheme`）にかかわらずダーク（青焼き）で開きます。`app.js`は起動時に`data-theme`を読んで丸ボタンをそろえ、押されたら切り替えて保存します。contrast.test.jsは両方の`:root`ブロックを読み、組ごとに比を数値で検査します。
 
 | トークン | ダーク | ライト | 用途 |
 |---|---|---|---|
@@ -194,7 +195,8 @@ DOMは`createElement`と`textContent`で組み立てます。CSPは`connect-src 
 ### 画面側のテスト
 
 - `test/view.test.js`：描画モデルの純関数。"abc"のトレースでscheduleModel(16)・roundModel(0)・finalModel・digestModelの値、byteGridの行と上限、compareDigestの抜き出し、worksheetの数値がトレースと一致
-- `test/html.test.js`：スクリプトの並び（sha256-core.js・input-core.js・presets.js・trace-view.js・messages.js・app.js）、CSPの文字列、referrer、favicon、`[hidden]`、id重複なし、入口・タブ・パネル・`#dock`・`motion-toggle`の不在、`main`の先頭の`announcement`と`error`、文書順1→5の5節（idと`h2`の番号の札＋`section.*`）、各節の中身、4節の5パネル(a)〜(e)の順と見出しキー（どれも`hidden`でない）、6ボタンのレール（`input`なし）、コピーの小見出しと5ボタン、凡例の見出し`li`、時計の見出しと位置の要素と3行の構造、ヘッダーの丸ボタン3つ、ヘルプの`dialog`（フッターの後、`h2#help-title`、`help-close`、空の`help-body`、リンクなし）、SVGが5つ（見出しとヘルプの閉じるボタンだけ）、`<a>`の許可リストとフッターの3行、`data-i18n`のキーが辞書にあること
+- `test/theme-init.test.js`：`theme-init.js`の判定（保存がなければOSの設定にかかわらずダーク、保存値が優先、想定外の値・壊れたJSON・使えないstorageはダーク）と、`<head>`の`style.css`の後に`defer`なしで読むこと
+- `test/html.test.js`：スクリプトの並び（`defer`なしのtheme-init.jsのあと、`defer`付きでsha256-core.js・input-core.js・presets.js・trace-view.js・messages.js・app.js）、CSPの文字列、referrer、favicon、`[hidden]`、id重複なし、入口・タブ・パネル・`#dock`・`motion-toggle`の不在、`main`の先頭の`announcement`と`error`、文書順1→5の5節（idと`h2`の番号の札＋`section.*`）、各節の中身、4節の5パネル(a)〜(e)の順と見出しキー（どれも`hidden`でない）、6ボタンのレール（`input`なし）、コピーの小見出しと5ボタン、凡例の見出し`li`、時計の見出しと位置の要素と3行の構造、ヘッダーの丸ボタン3つ、ヘルプの`dialog`（フッターの後、`h2#help-title`、`help-close`、空の`help-body`、リンクなし）、SVGが5つ（見出しとヘルプの閉じるボタンだけ）、`<a>`の許可リストとフッターの3行、`data-i18n`のキーが辞書にあること
 - `test/i18n.test.js`：ja/enのキーと差し込みの一致、名前空間（`section.*`・`compute.*`・`help.*`を含み、`tab`・`guide`・`learn`・`settings`・`dock`を含まない）、消したキーの不在（`rail.input`と段ごとの盤面の見出しを含む）、節の見出し6個の値（番号なし）、`clock.title`と`copy.title`の値、コピーのボタンが「をコピー」を繰り返さないこと、`board.pad.length`の短縮、ヘルプにURLがなくFIPS 180-4と`crypto.subtle`を名指すこと、禁止語と「計器」「入口」「タブ」の不在、空白、JSに日本語がないこと、サンプル（プリセット）の入力文字列が辞書の外にあり日英で同じこと
 - `test/app.test.js`：`t()`の差し込み名、動的キーの接頭辞（`result.match.`を含む）、条件分岐で選ぶキー（`compute.round.registers*`・`help.*`・`clock.play|pause`）の存在、`$()`のidが`index.html`にあること、`PANELS`・`PANEL_OF`・`RAIL`（6段階、数字1〜6）、tab・panel・dock・motionの処理の不在、storageのキーが`.lang`と`.display`の2つで`display`が`{theme}`だけ、丸ボタン、基数が一覧と出力の両方に反映されること、退避欄の置き場所、`buildCompute`／`refillCompute`／`updateCompute`の条件と差分更新（雛形の`cloneNode`、classの付け替え、表のテキストノードの書き換え、行を押す・序数の札）、自動再生（`setTimeout`の連鎖、`setInterval`なし、末尾で停止、`clock.pause`、空白キーの条件）、追従（`scrollIntoView({block: 'nearest'})`、`FOLLOW_PAUSE`、ホイール・タッチ・スクロールの受信、`renderPosition(false)`が5カ所）、ヘルプ（`showModal`／`close`、フォーカスの行き帰り、背景クリック、「?」キーの条件、リンクを作らない）、`--clock-height`の実測
 - `test/contrast.test.js`：上の表の全組（文字4.5:1、縁3:1）を明暗で検査。時計とヘルプの下地`--surface`に対する`--fg`・`--muted`・`--role1`・`--border`

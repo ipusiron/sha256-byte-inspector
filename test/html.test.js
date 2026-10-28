@@ -1,5 +1,5 @@
-/* Tests for index.html and the page-level rules of CLAUDE.md: the six deferred
- * scripts, the exact CSP, the ids of the screen contract, the single page with
+/* Tests for index.html and the page-level rules of CLAUDE.md: theme-init.js and
+ * the six deferred scripts, the exact CSP, the ids of the screen contract, the single page with
  * its five numbered sections in document order (no entrances, panels or dock),
  * the computation section laid out at once as five panels (a) to (e), the fixed
  * clock with its heading at the end of main, the three round header buttons and
@@ -85,15 +85,16 @@ const main = /<main>([\s\S]*?)<\/main>/.exec(html);
 const header = /<header class="page-header">([\s\S]*?)<\/header>/.exec(html);
 const dialog = /<dialog\b([^>]*)>([\s\S]*?)<\/dialog>/.exec(html);
 
-test('Six local classic scripts are deferred in dependency order', () => {
+test('theme-init.js runs first without defer, then six local classic scripts are deferred in dependency order', () => {
   const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)];
-  assert.equal(scripts.length, SCRIPTS.length);
-  assert.deepEqual(scripts.map(([, attrs]) => /src="([^"]+)"/.exec(attrs)[1]), SCRIPTS);
-  for (const [, attrs, body] of scripts) {
-    assert.match(attrs, /\bdefer\b/);
+  assert.equal(scripts.length, SCRIPTS.length + 1);
+  assert.deepEqual(scripts.map(([, attrs]) => /src="([^"]+)"/.exec(attrs)[1]), ['theme-init.js', ...SCRIPTS]);
+  scripts.forEach(([, attrs, body], index) => {
+    if (index === 0) assert.doesNotMatch(attrs, /\bdefer\b/, 'theme-init.js decides the theme before the first paint');
+    else assert.match(attrs, /\bdefer\b/);
     assert.doesNotMatch(attrs, /type=|async|crossorigin|integrity|nomodule/);
     assert.equal(body.trim(), '');
-  }
+  });
   assert.doesNotMatch(html, /type="module"|type="file"|<style|<link[^>]*href="https?:|src="https?:|javascript:/);
 });
 
