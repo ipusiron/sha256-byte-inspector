@@ -108,7 +108,7 @@ test('The round header buttons switch theme and language; the output section is 
   /* The language switch redraws from the state and keeps input, position and digest. */
   assert.match(app, /language = language === 'ja' \? 'en' : 'ja';\s*writeStorage\(LANG_KEY, language\);\s*localize\(\);\s*render\(\);/);
   assert.match(app, /function renderResult\(\)/);
-  assert.match(app, /badge\.textContent = has \? t\('result\.match\.' \+ state\.cryptoStatus\) : '';/);
+  assert.match(app, /setLiveText\(badge, has \? t\('result\.match\.' \+ state\.cryptoStatus\) : ''\);/);
   assert.match(app, /\$\('result'\)\.querySelector\('\.result-note'\)\.hidden = !\(ok && state\.result\.bytes\.length === 0\)/);
   assert.match(app, /const COPY_IDS = \['copy-hash', 'copy-bytes-spaced', 'copy-bytes-joined', 'copy-sha256sum'\];/);
   assert.match(app, /for \(const id of COPY_IDS\) \$\(id\)\.disabled = !ok;/);
@@ -166,7 +166,7 @@ test('Autoplay: a setTimeout chain at 1000ms / speed that leaves the browser idl
   assert.match(app, /function recompute\(\) \{\s*stopPlay\(\);/, 'a new input stops the playback');
   assert.match(app, /\$\('clock-speed'\)\.addEventListener\('change', \(\) => \{ if \(playing\) armPlay\(\); \}\);/, 'a speed change re-arms the timer');
   assert.match(app, /\$\('clock-play'\)\.addEventListener\('click', togglePlay\);/);
-  assert.match(app, /if \(state\.result\) \$\('announcement'\)\.textContent = positionText\(\);\s*\}/, 'stopping announces the position once');
+  assert.match(app, /if \(state\.result\) announce\(positionText\(\)\);\s*\}/, 'stopping announces the position once');
   /* Space toggles playback unless a text field, select, button or link has the focus. */
   assert.match(app, /if \(tag === 'TEXTAREA' \|\| tag === 'INPUT' \|\| tag === 'SELECT'\) return;/);
   assert.match(app, /case ' ':\s*case 'Spacebar':\s*if \(tag === 'BUTTON' \|\| tag === 'A' \|\| tag === 'SUMMARY'\) handled = false;\s*else togglePlay\(\);/);
@@ -181,10 +181,10 @@ test('Following the clock: one layout read and one scroll for manual steps and a
   assert.match(app, /window\.addEventListener\('wheel', noteUserScroll, \{ passive: true \}\);\s*window\.addEventListener\('touchmove', noteUserScroll, \{ passive: true \}\);/);
   assert.match(app, /window\.addEventListener\('scroll', \(\) => \{\s*if \(performance\.now\(\) > ownScrollUntil\) noteUserScroll\(\);\s*\}, \{ passive: true \}\);/);
   assert.match(app, /const limit = window\.innerHeight - clockHeight\(\);/, 'the fixed clock does not hide the row');
-  assert.match(app, /function goToStep\(k, announce, reveal\)/);
-  assert.match(app, /renderPosition\(reveal\);\s*if \(announce\) \$\('announcement'\)\.textContent = positionText\(\);/);
+  assert.match(app, /function goToStep\(k, speak, reveal\)/);
+  assert.match(app, /renderPosition\(reveal\);\s*if \(speak\) announce\(positionText\(\)\);/);
   assert.match(app, /function renderPosition\(reveal\) \{\s*renderRail\(\);\s*updateCompute\(reveal === true\);/);
-  for (const call of ["goToStep(0, true, true)", 'goToStep(totalSteps() - 1, true, true)', "goToStep(Number($('clock-range').value), true, true)", 'goToStep(k + direction, true, true)']) {
+  for (const call of ["goToStep(0, true, true)", 'goToStep(totalSteps() - 1, true, true)', "goToStep(Number($('clock-range').value), false, true)", 'goToStep(k + direction, true, true)']) {
     assert.ok(app.includes(call), call + ' reveals the row');
   }
   /* Renders that are not steps do not scroll: start-up, language, Web Crypto, radix, fragment. */
@@ -239,4 +239,39 @@ test('Storage keys, globals and DOM construction follow the contract', () => {
   assert.match(app, /RADIXES\.includes\(fragment\.r\)/);
   assert.match(app, /fragment \? fragment\.l : null/);
   assert.match(app, /typeof fragment\.d === 'string'/);
+});
+
+/* Live regions: the same text is never written twice (a same-value textContent write
+ * still replaces the text node and is announced again). The helper is evaluated from
+ * the source against a stand-in element. */
+test('setLiveText writes a live region only when its text changes', () => {
+  const source = app.match(/function setLiveText\(element, text\) \{[\s\S]*?\n  \}/);
+  assert.ok(source, 'setLiveText is defined');
+  const setLiveText = new Function(source[0] + '\nreturn setLiveText;')();
+  let writes = 0;
+  let current = '';
+  const element = {
+    get textContent() { return current; },
+    set textContent(value) { writes += 1; current = value; }
+  };
+  assert.equal(setLiveText(element, ''), false);
+  assert.equal(setLiveText(element, 'Round 3'), true);
+  assert.equal(setLiveText(element, 'Round 3'), false);
+  assert.equal(setLiveText(element, null), true);
+  assert.equal(setLiveText(element, undefined), false);
+  assert.equal(writes, 2);
+  assert.equal(current, '');
+});
+
+test('Live regions are written through setLiveText; the slider speaks on change only', () => {
+  assert.doesNotMatch(app, /\$\('(announcement|error|match-badge|compare-result|input-error)'\)\.textContent\s*=/, 'no direct writes to a live region');
+  assert.equal((app.match(/announce\(positionText\(\)\)/g) || []).length, 4, 'manual step, phase jump, stop, slider change');
+  assert.match(app, /return setLiveText\(\$\('announcement'\), text\);/);
+  assert.match(app, /setLiveText\(\$\('error'\), /);
+  assert.match(app, /setLiveText\(badge, /);
+  assert.match(app, /\$\('clock-range'\)\.addEventListener\('input', \(\) => goToStep\(Number\(\$\('clock-range'\)\.value\), false, true\)\);\s*\$\('clock-range'\)\.addEventListener\('change', announceSlider\);/, 'input: aria-valuetext and visuals; change: the sentence');
+  assert.match(app, /const SLIDER_ANNOUNCE_GAP = 1500;/);
+  assert.match(app, /if \(wait > 0\) \{\s*sliderTimer = window\.setTimeout\(announceSlider, wait\);\s*return;\s*\}/, 'repeated keys are spaced with a trailing flush');
+  assert.match(app, /if \(shown === inputErrorShown && box\.firstChild\) return;/, 'the alert is not rebuilt for an unchanged error');
+  assert.match(app, /if \(shown === compareShown\) return;/, 'the comparison is not rebuilt when unchanged');
 });

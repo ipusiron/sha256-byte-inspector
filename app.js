@@ -62,6 +62,9 @@
   const OWN_SCROLL_WINDOW = 120;
   /* Milliseconds of quiet typing before the computation section is redrawn. */
   const COMPUTE_DELAY = 300;
+  /* The clock slider speaks its sentence on `change`, at most once per this many ms
+   * while keys repeat; the last position is flushed when the keys stop. */
+  const SLIDER_ANNOUNCE_GAP = 1500;
   const PLAY_GLYPH = '\u25b6';
   const PAUSE_GLYPH = '\u2016';
   /* Keyboard help: the key names (shown in <kbd>), the dictionary key, the separator. */
@@ -116,6 +119,12 @@
   /* Layout facts measured once per resize instead of on every step. */
   let railOverflows = true;
   let clockHeightCache = 0;
+  /* What the input error and the comparison last showed (see renderInputError and
+   * renderCompare), and the slider's announcement pacing (see announceSlider). */
+  let inputErrorShown = '';
+  let compareShown = '';
+  let sliderAnnouncedAt = -Infinity;
+  let sliderTimer = 0;
   /* Autoplay keeps at least this share of the time free for the browser (pointer,
    * scrolling, painting): the next step waits until a step's cost times this factor. */
   const PLAY_IDLE_FACTOR = 3;
@@ -134,6 +143,20 @@
     if (text !== undefined && text !== null) element.textContent = text;
     if (className) element.className = className;
     return element;
+  }
+
+  /* Live regions (role=status, role=alert, aria-live) are written only when their text
+   * changes: assigning the same textContent still replaces the text node, and screen
+   * readers announce it again. Returns whether the text was written. */
+  function setLiveText(element, text) {
+    const value = text === undefined || text === null ? '' : String(text);
+    if (element.textContent === value) return false;
+    element.textContent = value;
+    return true;
+  }
+
+  function announce(text) {
+    return setLiveText($('announcement'), text);
   }
 
   function formatNumber(n) {
@@ -407,14 +430,29 @@
     return block ? block + ' ' + label : label;
   }
 
-  /* Moves the clock to step k. `announce` writes the live region (manual steps only);
+  /* Moves the clock to step k. `speak` writes the live region (manual steps only);
    * `reveal` scrolls the current row into view (manual steps and autoplay). */
-  function goToStep(k, announce, reveal) {
+  function goToStep(k, speak, reveal) {
     if (!state.result) return;
     const clamped = Math.max(0, Math.min(totalSteps() - 1, k));
     state.position = core.stepAt(state.result.blocks, clamped);
     renderPosition(reveal);
-    if (announce) $('announcement').textContent = positionText();
+    if (speak) announce(positionText());
+  }
+
+  /* The slider updates aria-valuetext and the readouts on every `input` (renderClock);
+   * the spoken sentence follows the committed value on `change`, spaced by
+   * SLIDER_ANNOUNCE_GAP while arrow keys repeat, with a trailing flush. */
+  function announceSlider() {
+    window.clearTimeout(sliderTimer);
+    sliderTimer = 0;
+    const wait = sliderAnnouncedAt + SLIDER_ANNOUNCE_GAP - performance.now();
+    if (wait > 0) {
+      sliderTimer = window.setTimeout(announceSlider, wait);
+      return;
+    }
+    sliderAnnouncedAt = performance.now();
+    if (state.result) announce(positionText());
   }
 
   /* Step indices where a phase starts: padding, then split, W[16], round 0 and the
@@ -477,7 +515,7 @@
     else if (phase === 'digest') state.position = { phase: 'digest', block: null, index: 0 };
     else state.position = { phase, block, index: phase === 'schedule' ? 16 : 0 };
     renderPosition(false);
-    $('announcement').textContent = positionText();
+    announce(positionText());
     if (!boardsVisible()) return;
     const title = $('board-' + PANEL_OF[phase] + '-title');
     ownScrollUntil = performance.now() + OWN_SCROLL_WINDOW;
@@ -530,33 +568,38 @@
   }
 
   function renderError() {
-    $('error').textContent = state.error ? errorText(state.error) : '';
+    setLiveText($('error'), state.error ? errorText(state.error) : '');
   }
 
+  /* The alert is rebuilt only when what it says changes, so typing that leaves the
+   * same error in place is not announced again. */
   function renderInputError() {
     const box = $('input-error');
-    box.replaceChildren();
     const failure = state.inputError;
-    if (!failure) return;
-    if (failure.kind === 'limit') {
-      box.textContent = t('error.limit', { max: formatNumber(BYTE_LIMIT) });
+    if (!failure || failure.kind === 'limit') {
+      inputErrorShown = '';
+      setLiveText(box, failure ? t('error.limit', { max: formatNumber(BYTE_LIMIT) }) : '');
       return;
     }
     const error = failure.error;
-    box.append(document.createTextNode(t('error.hex.' + error.code, {
+    const message = t('error.hex.' + error.code, {
       position: error.position, line: error.line, column: error.column, char: error.char, name: error.name
-    })));
+    });
     /* The input around the offending character, which is underlined. Positions count
      * code points, so the string is sliced as an array of code points. */
     const points = Array.from(state.hexText);
     const at = error.position;
+    const parts = [
+      points.slice(Math.max(0, at - ERROR_CONTEXT), at).join(''),
+      points.slice(at, at + 1).join(''),
+      points.slice(at + 1, at + 1 + ERROR_CONTEXT).join('')
+    ];
+    const shown = JSON.stringify([message, parts]);
+    if (shown === inputErrorShown && box.firstChild) return;
+    inputErrorShown = shown;
     const context = node('code', undefined, 'hex-context');
-    context.append(
-      document.createTextNode(points.slice(Math.max(0, at - ERROR_CONTEXT), at).join('')),
-      node('u', points.slice(at, at + 1).join('')),
-      document.createTextNode(points.slice(at + 1, at + 1 + ERROR_CONTEXT).join(''))
-    );
-    box.append(node('br'), context);
+    context.append(document.createTextNode(parts[0]), node('u', parts[1]), document.createTextNode(parts[2]));
+    box.replaceChildren(document.createTextNode(message), node('br'), context);
   }
 
   function renderStats() {
@@ -768,7 +811,7 @@
     if (!playing) return;
     playing = false;
     renderPlayButton();
-    if (state.result) $('announcement').textContent = positionText();
+    if (state.result) announce(positionText());
   }
 
   function togglePlay() {
@@ -1549,7 +1592,7 @@
     const badge = $('match-badge');
     const has = state.result !== null;
     badge.dataset.state = has ? state.cryptoStatus : 'unknown';
-    badge.textContent = has ? t('result.match.' + state.cryptoStatus) : '';
+    setLiveText(badge, has ? t('result.match.' + state.cryptoStatus) : '');
     const groups = $('digest-groups');
     groups.replaceChildren();
     groups.dataset.radix = state.radix;
@@ -1572,18 +1615,24 @@
     });
   }
 
+  /* The status is rebuilt only when the comparison it shows changes (typing that keeps
+   * the same outcome, or a re-render of the page, writes nothing). */
   function renderCompare() {
     const out = $('compare-result');
-    out.replaceChildren();
+    const c = state.compare.trim() === '' ? null : view.compareDigest(state.compare, state.result ? state.result.digestHex : null);
+    const shown = c ? JSON.stringify([language, c.found, c.match, c.normalized]) : '';
+    if (shown === compareShown) return;
+    compareShown = shown;
     out.classList.remove('is-match', 'is-mismatch');
-    if (state.compare.trim() === '') return;
-    const c = view.compareDigest(state.compare, state.result ? state.result.digestHex : null);
+    if (!c) {
+      setLiveText(out, '');
+      return;
+    }
     if (c.found.length === 0) {
-      out.textContent = t('compare.none');
+      setLiveText(out, t('compare.none'));
       return;
     }
     if (c.found.length > 1) {
-      out.append(node('span', t('compare.multiple', { n: c.found.length })));
       const choices = node('span', undefined, 'actions');
       for (const candidate of c.found) {
         const button = node('button', candidate, 'mono');
@@ -1595,16 +1644,16 @@
         });
         choices.append(button);
       }
-      out.append(choices);
+      out.replaceChildren(node('span', t('compare.multiple', { n: c.found.length })), choices);
       return;
     }
     const normalized = node('span', t('compare.normalized') + ' ' + c.normalized, 'mono');
     if (c.match === null) {
-      out.append(normalized);
+      out.replaceChildren(normalized);
       return;
     }
     out.classList.add(c.match ? 'is-match' : 'is-mismatch');
-    out.append(node('span', t(c.match ? 'compare.match' : 'compare.mismatch')), node('br'), normalized);
+    out.replaceChildren(node('span', t(c.match ? 'compare.match' : 'compare.mismatch')), node('br'), normalized);
   }
 
   /* ---- clipboard ---- */
@@ -1638,7 +1687,7 @@
     if (done) {
       const area = $('copy-fallback');
       if (area) area.hidden = true;
-      $('announcement').textContent = t('copy.done');
+      announce(t('copy.done'));
       return;
     }
     const area = fallbackArea();
@@ -1646,7 +1695,7 @@
     area.value = text;
     area.focus();
     area.select();
-    $('announcement').textContent = t('copy.failed');
+    announce(t('copy.failed'));
   }
 
   /* ---- help dialog ---- */
@@ -1842,7 +1891,8 @@
     $('clock-next').addEventListener('click', () => move(1));
     $('clock-play').addEventListener('click', togglePlay);
     $('clock-speed').addEventListener('change', () => { if (playing) armPlay(); });
-    $('clock-range').addEventListener('input', () => goToStep(Number($('clock-range').value), true, true));
+    $('clock-range').addEventListener('input', () => goToStep(Number($('clock-range').value), false, true));
+    $('clock-range').addEventListener('change', announceSlider);
     $('granularity').addEventListener('change', () => {
       const value = $('granularity').value;
       state.granularity = GRANULARITIES.includes(value) ? value : 'step';
